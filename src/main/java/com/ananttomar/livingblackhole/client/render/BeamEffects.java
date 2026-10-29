@@ -33,7 +33,9 @@ import java.util.List;
 /** Pocket Black Hole beams: a camera-facing core, a soft sheath and a helix of matter. */
 public final class BeamEffects {
     private static final ResourceLocation BEAM = LivingBlackHole.id("textures/entity/pocket_beam.png");
-    private static final int LIFE = 14;
+    private static final int LIFE = 22;
+    /** Diagnostics for the CI self-test: frames that drew at least one beam. */
+    public static int framesDrawn;
 
     private static final class Beam {
         final int shooterId;
@@ -68,6 +70,7 @@ public final class BeamEffects {
         if (mc.player != null && mc.player.getId() == msg.shooterId) {
             ClientEffects.addShake(0.25F + msg.power * 0.45F);
         }
+        ParticleFx.beam(level, msg.start, msg.end, msg.radius, msg.power);
         int crumbs = 0;
         for (BeamFxPacket.Absorbed a : msg.absorbed) {
             Vec3 at = Vec3.atCenterOf(a.pos());
@@ -136,7 +139,8 @@ public final class BeamEffects {
             if (life >= 1.0F) {
                 continue;
             }
-            float fade = (1.0F - life) * (1.0F - life);
+            // Hold at full intensity, then decay.
+            float fade = life < 0.35F ? 1.0F : (float) Math.pow(1.0F - (life - 0.35F) / 0.65F, 1.5);
             Vec3 a = start(beam, partialTick).subtract(cam);
             Vec3 b = beam.end.subtract(cam);
             float time = (mc.level != null ? mc.level.getGameTime() : 0) + partialTick;
@@ -171,6 +175,7 @@ public final class BeamEffects {
             }
         }
         buffers.endBatch(type);
+        framesDrawn++;
     }
 
     /** Camera-facing tapered ribbon from {@code a} to {@code b} (camera-relative coordinates). */

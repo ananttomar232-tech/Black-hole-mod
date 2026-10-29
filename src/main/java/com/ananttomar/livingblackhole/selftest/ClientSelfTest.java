@@ -42,6 +42,7 @@ import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RenderGuiEvent;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -65,6 +66,7 @@ import java.util.function.Consumer;
 public final class ClientSelfTest {
     private static final List<String> REPORT = new ArrayList<>();
     private static final List<Runnable> SCHEDULE = new ArrayList<>();
+    private static final List<String> PENDING_SHOTS = new ArrayList<>();
 
     private static int phase;
     private static int clock;
@@ -244,6 +246,7 @@ public final class ClientSelfTest {
                     shot(mc, "06_pocket_beam");
                 }
                 if (t == 150) {
+                    check(BeamEffects.framesDrawn > 0, "pocket beam rendered in " + BeamEffects.framesDrawn + " frames");
                     shot(mc, "06b_matter_stream");
                     mc.options.setCameraType(CameraType.FIRST_PERSON);
                 }
@@ -313,7 +316,7 @@ public final class ClientSelfTest {
                     check(sawLensing, "gravitational lensing shader compiled and ran");
                     check(shots >= 16, "captured " + shots + " cinematic screenshots");
                 }
-                if (t == 60) {
+                if (t >= 60 && PENDING_SHOTS.isEmpty()) {
                     finish(mc);
                 }
             }
@@ -385,10 +388,24 @@ public final class ClientSelfTest {
     }
 
     private static void shot(Minecraft mc, String name) {
-        shots++;
-        Screenshot.grab(mc.gameDirectory, "lbh_" + name + ".png", mc.getMainRenderTarget(), message -> {
-        });
-        log("screenshot " + name);
+        // Captured from the next rendered frame so the image matches this tick's state even when
+        // the software renderer runs several ticks per frame.
+        PENDING_SHOTS.add(name);
+    }
+
+    @SubscribeEvent
+    public static void onGuiRendered(RenderGuiEvent.Post event) {
+        if (!ServerSelfTest.ENABLED || PENDING_SHOTS.isEmpty()) {
+            return;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        for (String name : new ArrayList<>(PENDING_SHOTS)) {
+            shots++;
+            Screenshot.grab(mc.gameDirectory, "lbh_" + name + ".png", mc.getMainRenderTarget(), message -> {
+            });
+            log("screenshot " + name + " (beam frames drawn so far: " + BeamEffects.framesDrawn + ")");
+        }
+        PENDING_SHOTS.clear();
     }
 
     private static void verifyResources(Minecraft mc) {

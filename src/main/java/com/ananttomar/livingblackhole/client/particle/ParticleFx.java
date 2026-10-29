@@ -162,6 +162,40 @@ public final class ParticleFx {
         }
     }
 
+    /** The consumption beam as light: a dense core line plus a widening helix of matter. */
+    public static void beam(ClientLevel level, Vec3 start, Vec3 end, float radius, float power) {
+        if (ModParticleProviders.accretion == null || ModParticleProviders.spark == null) {
+            return;
+        }
+        RandomSource r = level.random;
+        Vec3 axis = end.subtract(start);
+        double len = axis.length();
+        if (len < 1.0E-3) {
+            return;
+        }
+        Vec3 dir = axis.scale(1.0 / len);
+        Vec3 ref = Math.abs(dir.y) < 0.95 ? new Vec3(0.0, 1.0, 0.0) : new Vec3(1.0, 0.0, 0.0);
+        Vec3 u = dir.cross(ref).normalize();
+        Vec3 w = dir.cross(u).normalize();
+        int n = Math.round((40 + 50 * power) * Math.max(0.4F, density()));
+        for (int i = 0; i < n; i++) {
+            double t = (i + r.nextDouble()) / n;
+            Vec3 p = start.add(dir.scale(len * t));
+            add(new GlowParticle(level, p.x, p.y, p.z, dir.x * 0.02, dir.y * 0.02, dir.z * 0.02, ModParticleProviders.accretion)
+                    .color(0.75F + r.nextFloat() * 0.2F, 0.45F + r.nextFloat() * 0.2F, 1.0F)
+                    .size(0.09F + 0.08F * power)
+                    .life(10 + r.nextInt(8)));
+            double phase = t * 14.0 + r.nextDouble() * 0.3;
+            double rad = 0.15 + t * radius * 0.55;
+            Vec3 h = p.add(u.scale(Math.cos(phase) * rad)).add(w.scale(Math.sin(phase) * rad));
+            Vec3 inward = p.subtract(h).scale(0.08);
+            add(new GlowParticle(level, h.x, h.y, h.z, inward.x, inward.y, inward.z, ModParticleProviders.spark)
+                    .color(0.55F, 0.3F + r.nextFloat() * 0.3F, 1.0F)
+                    .size(0.06F + r.nextFloat() * 0.06F)
+                    .life(12 + r.nextInt(10)));
+        }
+    }
+
     /** Debris torn loose by the Pocket Black Hole flowing back into the shooter's device. */
     public static void absorb(ClientLevel level, Vec3 from, int shooterId, Vec3 fallback, boolean entity) {
         if (ModParticleProviders.matter == null) {
