@@ -163,7 +163,7 @@ public class BlackHoleEntity extends Entity {
 
     /** Radius of the event horizon itself, before birth/collapse scaling. Grows with mass. */
     public float getHorizonRadius() {
-        return 2.4F + 2.2F * (1.0F - (float) Math.exp(-getMass() / 5000.0));
+        return 4.0F + 3.2F * (1.0F - (float) Math.exp(-getMass() / 6000.0));
     }
 
     /**

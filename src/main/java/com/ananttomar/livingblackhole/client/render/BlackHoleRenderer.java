@@ -104,7 +104,7 @@ public class BlackHoleRenderer extends EntityRenderer<BlackHoleEntity> {
             float ringBoost = 0.85F + 0.15F * Mth.sin(time * 0.11F) + instability * 0.5F;
             VertexConsumer halo = buffer.getBuffer(RenderType.eyes(HALO));
             RenderHelper.billboard(halo, ps, camRot, horizon * 2.35F, roll, ringBoost, 0.86F * ringBoost, 0.7F * ringBoost + instability * 0.3F, 1.0F);
-            float arcs = (1.0F - faceOn * 0.85F) * (0.9F + instability * 0.4F);
+            float arcs = (1.0F - faceOn * 0.8F) * (1.25F + instability * 0.4F);
             VertexConsumer arc = buffer.getBuffer(RenderType.eyes(ARCS));
             RenderHelper.billboard(arc, ps, camRot, horizon * 3.1F, roll, arcs, 0.62F * arcs, 0.3F * arcs + instability * 0.4F, 1.0F);
 
@@ -189,13 +189,17 @@ public class BlackHoleRenderer extends EntityRenderer<BlackHoleEntity> {
                 float r = baseR * Mth.lerp(Math.max(d, 0.0F), 1.0F, 0.82F);
                 float g = baseG * Mth.lerp(Math.max(d, 0.0F), 1.0F, 1.0F) * Mth.lerp(Math.max(-d, 0.0F), 1.0F, 0.7F);
                 float b = baseB * Mth.lerp(Math.max(d, 0.0F), 1.0F, 1.35F) * Mth.lerp(Math.max(-d, 0.0F), 1.0F, 0.5F);
-                float k2 = bright * beam;
-                RenderHelper.quad(vc, m, n,
-                        cos[j] * r0, 0.0F, sin[j] * r0, u0, v0,
-                        cos[j + 1] * r0, 0.0F, sin[j + 1] * r0, u1, v0,
-                        cos[j + 1] * r1, 0.0F, sin[j + 1] * r1, u1, v1,
-                        cos[j] * r1, 0.0F, sin[j] * r1, u0, v1,
-                        r * k2, g * k2, b * k2, 1.0F);
+                for (int layer = -1; layer <= 1; layer++) {
+                    float y = layer * horizon * 0.045F * (1.0F - f0 * 0.5F);
+                    float k2 = bright * beam * (layer == 0 ? 1.0F : 0.45F);
+                    float du = layer * 0.11F;
+                    RenderHelper.quad(vc, m, n,
+                            cos[j] * r0, y, sin[j] * r0, u0 + du, v0,
+                            cos[j + 1] * r0, y, sin[j + 1] * r0, u1 + du, v0,
+                            cos[j + 1] * r1, y, sin[j + 1] * r1, u1 + du, v1,
+                            cos[j] * r1, y, sin[j] * r1, u0 + du, v1,
+                            r * k2, g * k2, b * k2, 1.0F);
+                }
             }
         }
         ps.popPose();

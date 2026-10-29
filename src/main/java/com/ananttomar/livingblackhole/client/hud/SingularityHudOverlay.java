@@ -58,10 +58,10 @@ public final class SingularityHudOverlay {
         if (ev != null) {
             drawVignette(g, width, height, time, ev);
         }
-        drawFlashes(g, width, height, partialTick);
         if (ClientEffects.glitchTicks() > 0) {
             drawStatic(g, width, height, ClientEffects.glitchTicks());
         }
+        drawFlashes(g, width, height, partialTick);
         if (ev != null) {
             drawWarningPanel(g, font, player, ev, width, time, partialTick);
         }
@@ -99,12 +99,12 @@ public final class SingularityHudOverlay {
 
     private static void drawStatic(GuiGraphics g, int w, int h, int ticks) {
         float strength = Mth.clamp(ticks / 30.0F, 0.0F, 1.0F);
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 0.22F * strength);
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 0.075F * strength);
         int u = GLITCH.nextInt(256);
         int v = GLITCH.nextInt(256);
         g.blit(STATIC, 0, 0, u, v, w, h, 256, 256);
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-        int tears = 2 + (int) (strength * 6);
+        int tears = 1 + (int) (strength * 4);
         for (int i = 0; i < tears; i++) {
             int y = GLITCH.nextInt(Math.max(1, h));
             int th = 1 + GLITCH.nextInt(4);

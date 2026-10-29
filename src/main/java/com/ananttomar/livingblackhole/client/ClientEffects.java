@@ -123,20 +123,20 @@ public final class ClientEffects {
             case CinematicPacket.ESCAPE -> {
                 addShake(2.4F * near);
                 redFlash(1.0F);
-                glitchTicks = 70;
+                glitchTicks = 34;
                 introTicks = 120;
                 showBanner(CinematicPacket.ESCAPE, 120, 0.0F);
             }
             case CinematicPacket.COLLAPSE_START -> {
                 addShake(0.8F * near);
-                glitchTicks = Math.max(glitchTicks, 20);
+                glitchTicks = Math.max(glitchTicks, 12);
                 showBanner(CinematicPacket.COLLAPSE_START, BlackHoleEntity.DESTABILIZE_TICKS + BlackHoleEntity.COLLAPSE_TICKS, 0.0F);
             }
             case CinematicPacket.DETONATION -> {
                 addShake(4.0F * near);
                 flash(d < 600.0 ? 1.0F : 0.55F);
                 skyFlash = 1.0F;
-                glitchTicks = Math.max(glitchTicks, 25);
+                glitchTicks = Math.max(glitchTicks, 8);
                 if (d < 320.0) {
                     ParticleFx.detonation(msg.pos, msg.value);
                 }

@@ -498,7 +498,7 @@ def disk():
     mix = 0.5 * streaks + 0.35 * filaments + 0.15 * clumps
     turbulence = 0.12 + 1.1 * smoothstep(0.25, 0.85, mix) ** 1.4
     gaps = 1.0 - 0.55 * smoothstep(0.55, 0.9, spectral(h, w, 2.2, 114, ax=12.0))
-    profile = smoothstep(0.0, 0.025, v) * (v + 0.05) ** -0.9 * 0.16
+    profile = smoothstep(0.0, 0.025, v) * (v + 0.05) ** -0.9 * 0.22
     profile *= 1 - smoothstep(0.6, 1.0, v)
     hot = np.exp(-((v - 0.02) / 0.018) ** 2) * 0.75
     intensity = np.clip(profile * turbulence * gaps * 1.35 + hot, 0, 1.6)

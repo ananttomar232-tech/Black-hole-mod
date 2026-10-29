@@ -4,6 +4,7 @@ import com.ananttomar.livingblackhole.LivingBlackHole;
 import com.ananttomar.livingblackhole.client.ClientEffects;
 import com.ananttomar.livingblackhole.client.ClientSingularityState;
 import com.ananttomar.livingblackhole.client.particle.ModParticleProviders;
+import com.ananttomar.livingblackhole.client.render.BeamEffects;
 import com.ananttomar.livingblackhole.client.render.LensingEffect;
 import com.ananttomar.livingblackhole.entity.AntiGravityBombEntity;
 import com.ananttomar.livingblackhole.entity.BlackHoleEntity;
@@ -15,6 +16,7 @@ import com.ananttomar.livingblackhole.singularity.PocketBeamLogic;
 import com.ananttomar.livingblackhole.singularity.SingularityEvent;
 import com.ananttomar.livingblackhole.singularity.SingularityManager;
 import com.ananttomar.livingblackhole.singularity.SingularitySavedData;
+import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -176,6 +178,12 @@ public final class ClientSelfTest {
                         if (!events.isEmpty()) {
                             center = events.get(0).center;
                             fragment = events.get(0).fragments[0];
+                            for (BlockPos f : events.get(0).fragments) {
+                                if (level.canSeeSky(f.above())) {
+                                    fragment = f;
+                                    break;
+                                }
+                            }
                         }
                         check(p.getMainHandItem().isEmpty(), "pocket black hole deleted on breach");
                     });
@@ -205,8 +213,22 @@ public final class ClientSelfTest {
             }
             case 2 -> {
                 if (t == 1 && center != null) {
-                    Vec3 side = center.add(-12.0, 3.0, -30.0);
-                    lookAt(side, center.add(-8.0, -6.0, -6.0));
+                    // A grassy spot outside the crater, aimed at the ground between us and the hole.
+                    server(level -> {
+                        int x = (int) Math.floor(center.x - 34);
+                        int z = (int) Math.floor(center.z - 22);
+                        int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+                        Vec3 eye = new Vec3(x + 0.5, y + 4.5, z + 0.5);
+                        Vec3 aim = center.subtract(eye);
+                        float yaw = (float) Math.toDegrees(Math.atan2(-aim.x, aim.z));
+                        ServerPlayer p = player();
+                        p.getAbilities().flying = true;
+                        p.onUpdateAbilities();
+                        p.connection.teleport(eye.x, eye.y - p.getEyeHeight(), eye.z, yaw, 32.0F);
+                    });
+                }
+                if (t == 30) {
+                    mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
                 }
                 if (t == 40) {
                     server(level -> {
@@ -217,7 +239,12 @@ public final class ClientSelfTest {
                     });
                 }
                 if (t == 43) {
+                    check(BeamEffects.activeCount() > 0, "pocket beam effect received by the client");
                     shot(mc, "06_pocket_beam");
+                }
+                if (t == 48) {
+                    shot(mc, "06b_matter_stream");
+                    mc.options.setCameraType(CameraType.FIRST_PERSON);
                 }
                 if (t == 50 && fragment != null) {
                     Vec3 f = Vec3.atCenterOf(fragment);
@@ -283,7 +310,7 @@ public final class ClientSelfTest {
                     shot(mc, "15_neutralized");
                     check(ClientSingularityState.events().isEmpty(), "HUD cleared after the black hole was destroyed");
                     check(sawLensing, "gravitational lensing shader compiled and ran");
-                    check(shots >= 15, "captured " + shots + " cinematic screenshots");
+                    check(shots >= 16, "captured " + shots + " cinematic screenshots");
                 }
                 if (t == 60) {
                     finish(mc);
@@ -418,6 +445,7 @@ public final class ClientSelfTest {
             }
         }
         LivingBlackHole.LOGGER.info("[SELFTEST] RESULT: {}", failed ? "FAIL" : "PASS");
+        ServerSelfTest.watchdog(failed ? 1 : 0);
         mc.stop();
     }
 }

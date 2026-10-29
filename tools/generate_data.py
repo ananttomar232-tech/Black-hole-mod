@@ -81,6 +81,7 @@ def pocket_models():
         box([4.5, 5.5, 5.5], [11.5, 10.5, 10.5], "#core", glow=True, full_uv=True, name="core_x"),
         box([5.5, 4.5, 5.5], [10.5, 11.5, 10.5], "#core", glow=True, full_uv=True, name="core_y"),
         box([5.5, 5.5, 4.5], [10.5, 10.5, 11.5], "#core", glow=True, full_uv=True, name="core_z"),
+        box([5.1, 5.3, 5.1], [10.9, 10.7, 10.9], "#core", rot=("y", 45, c), glow=True, full_uv=True, name="core_round"),
     ]
     # Containment ring A: square frame in the XY plane, turned 45 degrees into a diamond.
     ring_a = [([3, 12, 7.25], [13, 13, 8.75]), ([3, 3, 7.25], [13, 4, 8.75]),
@@ -108,7 +109,7 @@ def pocket_models():
         "textures": {"particle": "#casing"},
         "elements": elements,
         "display": display(gui_scale=0.85, ground=0.4, tp=(10, 45, 0), tp_t=(0, 3, 1.5), tp_s=0.45,
-                           fp=(0, -35, 0), fp_t=(1.0, 3.6, 0.5), fp_s=0.5),
+                           fp=(0, -35, 0), fp_t=(1.6, 3.4, 0.8), fp_s=0.4),
     }
     asset("models/item/pocket_black_hole_base.json", base)
 
@@ -158,6 +159,8 @@ def bomb_model():
         box([3.5, 3, 4.5], [12.5, 11, 11.5], "#shell", name="shell_x"),
         box([4.5, 2, 4.5], [11.5, 12, 11.5], "#shell", name="shell_y"),
         box([4.5, 3, 3.5], [11.5, 11, 12.5], "#shell", name="shell_z"),
+        box([4.3, 2.6, 4.3], [11.7, 11.4, 11.7], "#shell", rot=("y", 45, c), name="shell_round_y"),
+        box([4.3, 3.3, 3.6], [11.7, 10.7, 12.4], "#shell", rot=("x", 45, c), name="shell_round_x"),
         box([3, 6.25, 3], [13, 7.75, 13], "#band", glow=True, name="equator"),
         box([7.25, 1.5, 3], [8.75, 12.5, 13], "#band", glow=True, name="meridian"),
         box([7.5, 4.5, 1.5], [8.5, 9.5, 14.5], "#metal", rot=("y", 45, c), name="fins_a"),

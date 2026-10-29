@@ -200,6 +200,21 @@ public final class ServerSelfTest {
             LivingBlackHole.LOGGER.error("[SELFTEST] could not write report", e);
         }
         LivingBlackHole.LOGGER.info("[SELFTEST] RESULT: {}", failed ? "FAIL" : "PASS");
+        watchdog(failed ? 1 : 0);
         server.halt(false);
+    }
+
+    /** Guarantees the test JVM exits even if a stray non-daemon thread survives shutdown. */
+    static void watchdog(int status) {
+        Thread t = new Thread(() -> {
+            try {
+                Thread.sleep(90_000L);
+            } catch (InterruptedException ignored) {
+                return;
+            }
+            Runtime.getRuntime().halt(status);
+        }, "livingblackhole-selftest-watchdog");
+        t.setDaemon(true);
+        t.start();
     }
 }

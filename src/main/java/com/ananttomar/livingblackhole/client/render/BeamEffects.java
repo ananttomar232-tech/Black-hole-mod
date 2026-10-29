@@ -96,6 +96,10 @@ public final class BeamEffects {
         BEAMS.clear();
     }
 
+    public static int activeCount() {
+        return BEAMS.size();
+    }
+
     private static Vec3 start(Beam beam, float partialTick) {
         Minecraft mc = Minecraft.getInstance();
         Entity e = mc.level != null ? mc.level.getEntity(beam.shooterId) : null;
