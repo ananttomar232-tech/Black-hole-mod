@@ -13,12 +13,14 @@ Captured automatically by the CI client self-test (software rendering, default s
 
 | | |
 |---|---|
-| ![Living black hole](docs/screenshots/01-living-black-hole.jpg) | ![Core Fragment crash site](docs/screenshots/02-core-fragment.jpg) |
-| *The escaped singularity devouring the hills, HUD tracking the three fragments* | *A Core Fragment crash site with its sky beam* |
-| ![Gravity lock](docs/screenshots/03-gravity-lock.jpg) | ![Destabilizing](docs/screenshots/04-destabilizing.jpg) |
-| *Gravity lock: the Anti-Gravity Bomb falls into the horizon* | *Destabilisation: white-hot disk, countdown to detonation* |
-| ![Detonation](docs/screenshots/05-detonation.jpg) | ![Shockwave](docs/screenshots/06-shockwave.jpg) |
-| *Implosion and detonation flare* | *The shockwave: singularity neutralized* |
+| ![Pocket beam](docs/screenshots/00-pocket-beam.jpg) | ![Living black hole](docs/screenshots/01-living-black-hole.jpg) |
+| *The Pocket Black Hole's consumption beam* | *The escaped singularity devouring the hills, HUD tracking the three fragments* |
+| ![Core Fragment crash site](docs/screenshots/02-core-fragment.jpg) | ![Gravity lock](docs/screenshots/03-gravity-lock.jpg) |
+| *A Core Fragment crash site with its sky beam* | *Gravity lock: the Anti-Gravity Bomb falls into the horizon* |
+| ![Destabilizing](docs/screenshots/04-destabilizing.jpg) | ![Detonation](docs/screenshots/05-detonation.jpg) |
+| *Destabilisation: white-hot disk, countdown to detonation* | *Implosion and detonation flare* |
+| ![Shockwave](docs/screenshots/06-shockwave.jpg) | |
+| *The shockwave: singularity neutralized* | |
 
 ![Models](docs/models.png)
 *Pocket Black Hole (stable / critical), Compressed Matter, Anti-Gravity Bomb, Core Fragment, Block of Compressed Matter.*
