@@ -8,6 +8,21 @@ Feed a Pocket Black Hole 500 blocks and its containment fails. A living black ho
 
 Every release is built by CI, then played end to end on a dedicated server and in a real client before it is published. Screenshots from the latest automated run are attached to the [`ci-evidence` release](https://github.com/ananttomar232-tech/Black-hole-mod/releases/tag/ci-evidence).
 
+## Gallery
+Captured automatically by the CI client self-test (software rendering, default settings):
+
+| | |
+|---|---|
+| ![Living black hole](docs/screenshots/01-living-black-hole.jpg) | ![Core Fragment crash site](docs/screenshots/02-core-fragment.jpg) |
+| *The escaped singularity devouring the hills, HUD tracking the three fragments* | *A Core Fragment crash site with its sky beam* |
+| ![Gravity lock](docs/screenshots/03-gravity-lock.jpg) | ![Destabilizing](docs/screenshots/04-destabilizing.jpg) |
+| *Gravity lock: the Anti-Gravity Bomb falls into the horizon* | *Destabilisation: white-hot disk, countdown to detonation* |
+| ![Detonation](docs/screenshots/05-detonation.jpg) | ![Shockwave](docs/screenshots/06-shockwave.jpg) |
+| *Implosion and detonation flare* | *The shockwave: singularity neutralized* |
+
+![Models](docs/models.png)
+*Pocket Black Hole (stable / critical), Compressed Matter, Anti-Gravity Bomb, Core Fragment, Block of Compressed Matter.*
+
 ---
 
 ## The event, step by step

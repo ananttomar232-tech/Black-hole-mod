@@ -188,10 +188,10 @@ public final class ClientSelfTest {
                         check(p.getMainHandItem().isEmpty(), "pocket black hole deleted on breach");
                     });
                 }
-                if (t == 164) {
+                if (t == 168) {
                     shot(mc, "01_containment_breach");
                 }
-                if (t == 175) {
+                if (t == 185) {
                     check(sawHudEvent, "HUD received the singularity event");
                     shot(mc, "02_breach_hud");
                 }
@@ -227,10 +227,10 @@ public final class ClientSelfTest {
                         p.connection.teleport(eye.x, eye.y - p.getEyeHeight(), eye.z, yaw, 32.0F);
                     });
                 }
-                if (t == 30) {
+                if (t == 100) {
                     mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
                 }
-                if (t == 40) {
+                if (t == 140) {
                     server(level -> {
                         ServerPlayer p = player();
                         ItemStack pocket = new ItemStack(ModItems.POCKET_BLACK_HOLE.get());
@@ -238,19 +238,19 @@ public final class ClientSelfTest {
                         PocketBeamLogic.fire(level, p, pocket, InteractionHand.MAIN_HAND, 1.0F);
                     });
                 }
-                if (t == 43) {
+                if (t == 144) {
                     check(BeamEffects.activeCount() > 0, "pocket beam effect received by the client");
                     shot(mc, "06_pocket_beam");
                 }
-                if (t == 48) {
+                if (t == 150) {
                     shot(mc, "06b_matter_stream");
                     mc.options.setCameraType(CameraType.FIRST_PERSON);
                 }
-                if (t == 50 && fragment != null) {
+                if (t == 160 && fragment != null) {
                     Vec3 f = Vec3.atCenterOf(fragment);
                     lookAt(f.add(-7.0, 3.5, -7.0), f.add(0.0, 0.5, 0.0));
                 }
-                if (t == 150) {
+                if (t == 280) {
                     shot(mc, "07_core_fragment");
                     server(level -> {
                         if (level.getBlockState(fragment).is(ModBlocks.CORE_FRAGMENT.get())) {
@@ -259,13 +259,13 @@ public final class ClientSelfTest {
                         }
                     });
                 }
-                if (t == 165) {
+                if (t == 295) {
                     shot(mc, "08_fragment_secured");
                 }
-                if (t == 180 && vantage != null) {
+                if (t == 310 && vantage != null) {
                     lookAt(vantage, center);
                 }
-                if (t == 240) {
+                if (t == 400) {
                     server(level -> {
                         ServerPlayer p = player();
                         AntiGravityBombEntity bomb = new AntiGravityBombEntity(level, p);
@@ -275,7 +275,7 @@ public final class ClientSelfTest {
                         level.addFreshEntity(bomb);
                     });
                 }
-                if (t == 252) {
+                if (t == 412) {
                     shot(mc, "09_bomb_captured");
                     next(3);
                 }
