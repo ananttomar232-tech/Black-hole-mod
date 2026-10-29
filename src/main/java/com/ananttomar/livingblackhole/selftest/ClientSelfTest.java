@@ -217,14 +217,15 @@ public final class ClientSelfTest {
                     server(level -> {
                         int x = (int) Math.floor(center.x - 34);
                         int z = (int) Math.floor(center.z - 22);
-                        int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
-                        Vec3 eye = new Vec3(x + 0.5, y + 4.5, z + 0.5);
+                        // MOTION_BLOCKING includes leaves, so the camera never ends up inside a canopy.
+                        int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
+                        Vec3 eye = new Vec3(x + 0.5, y + 6.0, z + 0.5);
                         Vec3 aim = center.subtract(eye);
                         float yaw = (float) Math.toDegrees(Math.atan2(-aim.x, aim.z));
                         ServerPlayer p = player();
                         p.getAbilities().flying = true;
                         p.onUpdateAbilities();
-                        p.connection.teleport(eye.x, eye.y - p.getEyeHeight(), eye.z, yaw, 32.0F);
+                        p.connection.teleport(eye.x, eye.y - p.getEyeHeight(), eye.z, yaw, 38.0F);
                     });
                 }
                 if (t == 100) {
