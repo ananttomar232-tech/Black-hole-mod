@@ -1,0 +1,32 @@
+{
+  "display": {
+    "icon": {
+      "item": "livingblackhole:anti_gravity_bomb"
+    },
+    "title": {
+      "translate": "advancements.livingblackhole.defuser.title"
+    },
+    "description": {
+      "translate": "advancements.livingblackhole.defuser.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "has_bomb": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "livingblackhole:anti_gravity_bomb"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "parent": "livingblackhole:shards_of_creation"
+}

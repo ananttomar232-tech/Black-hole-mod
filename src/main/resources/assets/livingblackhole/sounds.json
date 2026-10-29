@@ -1,0 +1,118 @@
+{
+  "black_hole_ambient": {
+    "subtitle": "subtitles.livingblackhole.black_hole_ambient",
+    "sounds": [
+      {
+        "name": "livingblackhole:black_hole_ambient",
+        "stream": true
+      }
+    ]
+  },
+  "black_hole_birth": {
+    "subtitle": "subtitles.livingblackhole.black_hole_birth",
+    "sounds": [
+      {
+        "name": "livingblackhole:black_hole_birth",
+        "stream": true
+      }
+    ]
+  },
+  "containment_breach": {
+    "subtitle": "subtitles.livingblackhole.containment_breach",
+    "sounds": [
+      {
+        "name": "livingblackhole:containment_breach"
+      }
+    ]
+  },
+  "alarm": {
+    "subtitle": "subtitles.livingblackhole.alarm",
+    "sounds": [
+      {
+        "name": "livingblackhole:alarm"
+      }
+    ]
+  },
+  "warning_beep": {
+    "subtitle": "subtitles.livingblackhole.warning_beep",
+    "sounds": [
+      {
+        "name": "livingblackhole:warning_beep"
+      }
+    ]
+  },
+  "pocket_charge": {
+    "subtitle": "subtitles.livingblackhole.pocket_charge",
+    "sounds": [
+      {
+        "name": "livingblackhole:pocket_charge"
+      }
+    ]
+  },
+  "pocket_fire": {
+    "subtitle": "subtitles.livingblackhole.pocket_fire",
+    "sounds": [
+      {
+        "name": "livingblackhole:pocket_fire"
+      }
+    ]
+  },
+  "collapse_buildup": {
+    "subtitle": "subtitles.livingblackhole.collapse_buildup",
+    "sounds": [
+      {
+        "name": "livingblackhole:collapse_buildup",
+        "stream": true
+      }
+    ]
+  },
+  "singularity_explosion": {
+    "subtitle": "subtitles.livingblackhole.singularity_explosion",
+    "sounds": [
+      {
+        "name": "livingblackhole:singularity_explosion",
+        "stream": true
+      }
+    ]
+  },
+  "bomb_throw": {
+    "subtitle": "subtitles.livingblackhole.bomb_throw",
+    "sounds": [
+      {
+        "name": "livingblackhole:bomb_throw"
+      }
+    ]
+  },
+  "bomb_captured": {
+    "subtitle": "subtitles.livingblackhole.bomb_captured",
+    "sounds": [
+      {
+        "name": "livingblackhole:bomb_captured"
+      }
+    ]
+  },
+  "bomb_fizzle": {
+    "subtitle": "subtitles.livingblackhole.bomb_fizzle",
+    "sounds": [
+      {
+        "name": "livingblackhole:bomb_fizzle"
+      }
+    ]
+  },
+  "fragment_hum": {
+    "subtitle": "subtitles.livingblackhole.fragment_hum",
+    "sounds": [
+      {
+        "name": "livingblackhole:fragment_hum"
+      }
+    ]
+  },
+  "fragment_collect": {
+    "subtitle": "subtitles.livingblackhole.fragment_collect",
+    "sounds": [
+      {
+        "name": "livingblackhole:fragment_collect"
+      }
+    ]
+  }
+}

@@ -37,11 +37,20 @@ minecraft {
 
         client {
             property 'forge.enabledGameTestNamespaces', mod_id
+            if (project.hasProperty('selftest')) {
+                // CI: scripted cinematic run of the whole event (see ClientSelfTest).
+                property 'livingblackhole.selftest', 'true'
+                args '--width', '1280', '--height', '720'
+            }
         }
 
         server {
             property 'forge.enabledGameTestNamespaces', mod_id
             args '--nogui'
+            if (project.hasProperty('selftest')) {
+                // CI: headless end-to-end test on a dedicated server (see ServerSelfTest).
+                property 'livingblackhole.selftest', 'true'
+            }
         }
     }
 }

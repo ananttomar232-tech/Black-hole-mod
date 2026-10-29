@@ -1,0 +1,9 @@
+{
+  "parent": "livingblackhole:item/pocket_black_hole_base",
+  "textures": {
+    "casing": "livingblackhole:item/pocket_casing",
+    "core": "livingblackhole:item/pocket_core_critical",
+    "ring": "livingblackhole:item/pocket_ring_critical",
+    "particle": "livingblackhole:item/pocket_casing"
+  }
+}

@@ -59,7 +59,7 @@ def norm(a):
 
 
 def spectral(h, w, beta=2.0, seed=0, ax=1.0, ay=1.0, phase_shift=None):
-    """Periodic 1/f^beta noise via inverse FFT. ax/ay stretch features along x/y."""
+    """Periodic 1/f^beta noise via inverse FFT. ax/ay elongate features along x/y (>1 = longer)."""
     rng = np.random.default_rng(seed)
     fy = np.fft.fftfreq(h)[:, None] * h / max(h, w) * ay
     fx = np.fft.fftfreq(w)[None, :] * w / max(h, w) * ax
@@ -156,6 +156,18 @@ def voronoi(h, w, n, seed, wrap=True):
     return f1, f2, cid, rng.uniform(0, 1, n)
 
 
+def contour_veins(s, seed, width=0.012, coverage=0.45):
+    """Thin continuous veins: iso-contours of smooth, domain-warped noise, partly masked."""
+    u, v = grid(s, s)
+    wx = norm(blur(spectral(s, s, 3.0, seed + 1), s / 32))
+    wy = norm(blur(spectral(s, s, 3.0, seed + 2), s / 32))
+    base = norm(blur(spectral(s, s, 3.0, seed), s / 40))
+    n = sample_wrap(base, u + (wx - 0.5) * 0.18, v + (wy - 0.5) * 0.18)
+    lines = np.exp(-((n - 0.5) / width) ** 2) + np.exp(-((n - 0.3) / (width * 0.8)) ** 2) * 0.6
+    mask = smoothstep(1.0 - coverage - 0.1, 1.0 - coverage + 0.1, spectral(s, s, 2.6, seed + 3))
+    return np.clip(lines * mask, 0, 1)
+
+
 def animate(frames):
     return np.concatenate(frames, axis=0)
 
@@ -169,7 +181,7 @@ BLUR = {"texture": {"blur": True}}
 def pocket_casing():
     s = 256
     u, v = grid(s, s)
-    base = 0.08 + 0.05 * spectral(s, s, 2.4, 11) + 0.035 * spectral(s, s, 1.2, 12, ax=0.08, ay=3.0)
+    base = 0.08 + 0.05 * spectral(s, s, 2.4, 11) + 0.035 * spectral(s, s, 1.2, 12, ax=10.0)
     col = np.stack([base * 0.92, base * 0.95, base * 1.12], -1)
 
     # Panel grooves every 64px with a lit lower lip.
@@ -221,7 +233,7 @@ def pocket_core(state):
         phi = th - rot + 2.6 * np.log(r + 0.05)
         arms = 0.5 + 0.5 * np.cos(3.0 * phi)
         n = sample_wrap(field, phi / TAU, np.log(r + 0.05) * 0.35)
-        n2 = sample_wrap(fine, phi / TAU * 2.0, r * 1.7 - f / frames)
+        n2 = sample_wrap(field, phi / TAU * 2.0, r * 0.6 - f / frames)
         swirl = (0.55 * arms + 0.45 * n) * (0.7 + 0.3 * n2)
         radial = smoothstep(0.26, 0.42, r) * (1 - smoothstep(0.75, 1.15, r))
         value = swirl * radial
@@ -230,9 +242,9 @@ def pocket_core(state):
         col = gradient(value, CORE_PALETTES[state])
         col *= (r > 0.255)[..., None] * 1.0 + (r <= 0.255)[..., None] * 0.0
         if state == "critical":
-            cr = ridged(sample_wrap(fine, th / TAU * 3 + rot / TAU, r * 2.0))
-            cracks = smoothstep(0.93, 0.99, cr) * smoothstep(0.3, 0.5, r)
-            col = col + cracks[..., None] * np.array([1.0, 0.85, 0.6])
+            cr = ridged(sample_wrap(field, th / TAU + rot / TAU * 0.5, r * 0.9))
+            cracks = smoothstep(0.965, 0.995, cr) * smoothstep(0.3, 0.45, r) * (1 - smoothstep(0.7, 0.85, r))
+            col = col + (blur(cracks, 1.2) * 0.8 + cracks)[..., None] * np.array([1.0, 0.85, 0.6])
         out_frames.append(rgba(col))
     save_rgba(animate(out_frames), f"item/pocket_core_{state}.png", ANIM)
 
@@ -246,8 +258,8 @@ RING_PALETTES = {
 
 
 def energy_band(rel, palette, seed, frames=16, s=128, rims=True):
-    flow = spectral(s, s, 1.7, seed, ax=0.25, ay=1.6)
-    flow2 = spectral(s, s, 1.3, seed + 1, ax=0.5, ay=2.5)
+    flow = spectral(s, s, 1.7, seed, ax=5.0)
+    flow2 = spectral(s, s, 1.3, seed + 1, ax=7.0)
     u, v = grid(s, s)
     out_frames = []
     for f in range(frames):
@@ -275,13 +287,12 @@ def compressed_matter():
     col = np.stack([base * 1.0, base * 0.85, base * 1.25], -1)
     edges = smoothstep(0.012, 0.0, f2 - f1)
     col += edges[..., None] * np.array([0.05, 0.03, 0.09])
-    veins = ridged(spectral(s, s, 2.0, 43)) ** 9
-    veins = smoothstep(0.35, 0.9, veins)
-    glow = blur(veins, 3.5) * 1.4 + veins
+    veins = contour_veins(s, 43, width=0.011, coverage=0.55)
+    glow = blur(veins, 2.5) * 1.2 + veins
     col += glow[..., None] * np.array([0.6, 0.22, 1.0])
     rng = np.random.default_rng(44)
     stars = np.zeros((s, s))
-    for _ in range(70):
+    for _ in range(28):
         x, y = rng.integers(0, s, 2)
         stars[y, x] = rng.uniform(0.5, 1.0)
     col += blur(stars, 0.8)[..., None] * np.array([0.9, 0.85, 1.0]) * 3.0
@@ -350,7 +361,7 @@ def bomb_shell():
 def bomb_metal():
     s = 256
     u, v = grid(s, s)
-    brushed = spectral(s, s, 1.0, 71, ax=0.04, ay=4.0)
+    brushed = spectral(s, s, 1.0, 71, ax=16.0)
     base = 0.42 + 0.14 * brushed + 0.06 * spectral(s, s, 2.0, 72)
     col = np.stack([base * 0.95, base * 0.98, base * 1.04], -1)
     border = np.minimum(np.minimum(u, 1 - u), np.minimum(v, 1 - v)) * s
@@ -395,7 +406,7 @@ def core_base():
     f1, f2, cid, rnd = voronoi(s, s, 34, 91)
     base = 0.035 + 0.05 * spectral(s, s, 2.4, 92) + 0.02 * rnd[cid]
     col = np.stack([base * 0.85, base * 0.7, base * 1.3], -1)
-    gloss = smoothstep(0.86, 0.98, spectral(s, s, 1.0, 93, ax=0.3, ay=2.0)) * 0.18
+    gloss = smoothstep(0.86, 0.98, spectral(s, s, 1.0, 93, ax=4.0)) * 0.18
     col += gloss[..., None] * np.array([0.6, 0.55, 0.9])
     crack = smoothstep(0.007, 0.0, f2 - f1) * smoothstep(0.35, 0.65, spectral(s, s, 2.0, 94))
     glow = blur(crack, 2.5) * 1.3 + crack
@@ -412,8 +423,7 @@ def compressed_block():
     rock = np.stack([base, base * 0.85, base * 1.25], -1)
     edges = smoothstep(0.01, 0.0, f2 - f1)
     rock += edges[..., None] * np.array([0.08, 0.05, 0.14])
-    veins_raw = ridged(spectral(s, s, 2.0, 103)) ** 8
-    veins = smoothstep(0.3, 0.9, veins_raw)
+    veins = contour_veins(s, 103, width=0.012, coverage=0.6)
     phase = spectral(s, s, 1.5, 104)
     frame_edge = np.minimum(np.minimum(u, 1 - u), np.minimum(v, 1 - v)) * s
     bevel = smoothstep(0, 10, frame_edge)
@@ -482,14 +492,16 @@ DISK_COLORS = [(0.0, (1.0, 0.97, 0.88)), (0.12, (1.0, 0.85, 0.55)), (0.3, (1.0, 
 def disk():
     w, h = 1024, 256
     u, v = grid(h, w)
-    streaks = spectral(h, w, 1.7, 111, ax=0.12, ay=1.0)
-    filaments = spectral(h, w, 1.1, 112, ax=0.06, ay=1.0)
-    clumps = spectral(h, w, 2.6, 113, ax=0.5, ay=1.0)
-    turbulence = 0.3 + 0.7 * (0.55 * streaks + 0.3 * filaments + 0.15 * clumps) ** 1.6
-    profile = smoothstep(0.0, 0.035, v) * (v + 0.04) ** -0.85 * 0.18
-    profile *= 1 - smoothstep(0.7, 1.0, v)
-    hot = np.exp(-((v - 0.03) / 0.025) ** 2) * 0.6
-    intensity = np.clip(profile * turbulence * 1.25 + hot, 0, 1.6)
+    streaks = spectral(h, w, 1.9, 111, ax=10.0)
+    filaments = spectral(h, w, 1.3, 112, ax=18.0)
+    clumps = spectral(h, w, 2.6, 113, ax=2.5)
+    mix = 0.5 * streaks + 0.35 * filaments + 0.15 * clumps
+    turbulence = 0.12 + 1.1 * smoothstep(0.25, 0.85, mix) ** 1.4
+    gaps = 1.0 - 0.55 * smoothstep(0.55, 0.9, spectral(h, w, 2.2, 114, ax=12.0))
+    profile = smoothstep(0.0, 0.025, v) * (v + 0.05) ** -0.9 * 0.16
+    profile *= 1 - smoothstep(0.6, 1.0, v)
+    hot = np.exp(-((v - 0.02) / 0.018) ** 2) * 0.75
+    intensity = np.clip(profile * turbulence * gaps * 1.35 + hot, 0, 1.6)
     col = gradient(v, DISK_COLORS) * np.clip(intensity, 0, 1.0)[..., None]
     col += np.clip(intensity - 1.0, 0, 1)[..., None] * 0.6
     save_rgba(additive(col), "entity/black_hole/disk.png", BLUR)
@@ -498,7 +510,7 @@ def disk():
 def halo():
     s = 1024
     r, th = polar(s, s)
-    noise = spectral(64, 512, 1.5, 121, ax=0.3, ay=1.0)
+    noise = spectral(64, 512, 1.5, 121, ax=2.0)
     ang = sample_wrap(noise, th / TAU, np.zeros_like(th) + 0.5)
     rp = 0.447
     ring = np.exp(-((r - rp) / 0.0055) ** 2)
@@ -514,7 +526,7 @@ def arcs():
     r, th = polar(s, s)
     rin = 0.345
     weight = np.abs(np.sin(th)) ** 1.3
-    streaks = spectral(128, 1024, 1.6, 131, ax=0.15, ay=1.0)
+    streaks = spectral(128, 1024, 1.8, 131, ax=8.0)
     n = sample_wrap(streaks, th / TAU * 2.0, (r - rin) * 3.0)
     radial = smoothstep(rin - 0.005, rin + 0.01, r) * np.exp(-np.clip(r - rin, 0, None) / 0.09)
     i = radial * weight * (0.45 + 0.75 * n ** 1.4) * (1 - smoothstep(0.7, 0.9, r))
@@ -526,7 +538,7 @@ def arcs():
 def corona():
     s = 512
     r, th = polar(s, s)
-    wisps = spectral(64, 512, 1.4, 141, ax=0.25, ay=1.0)
+    wisps = spectral(64, 512, 1.4, 141, ay=4.0)
     n = sample_wrap(wisps, th / TAU, r * 0.8)
     i = (np.exp(-r / 0.16) * 0.65 + np.exp(-(r / 0.5) ** 2) * 0.35) * (0.7 + 0.45 * n)
     i *= 1 - smoothstep(0.75, 1.0, r)
@@ -536,8 +548,8 @@ def corona():
 def jet():
     w, h = 128, 512
     u, v = grid(h, w)
-    knots = spectral(h, w, 1.6, 151, ax=1.5, ay=0.2)
-    fil = spectral(h, w, 1.1, 152, ax=3.0, ay=0.15)
+    knots = spectral(h, w, 1.8, 151, ay=6.0)
+    fil = spectral(h, w, 1.2, 152, ay=12.0)
     across = np.exp(-((u - 0.5) / 0.14) ** 2) + np.exp(-((u - 0.5) / 0.36) ** 2) * 0.4
     i = across * (0.45 + 0.55 * knots) * (0.75 + 0.35 * fil)
     col = np.stack([i * 0.9, i * 0.95, i], -1)
@@ -573,7 +585,7 @@ def soft_glow(rel, s=256, sigma=0.35):
 def shockwave():
     w, h = 1024, 128
     u, v = grid(h, w)
-    breakup = spectral(h, w, 1.5, 161, ax=0.2, ay=1.0)
+    breakup = spectral(h, w, 1.6, 161, ax=5.0)
     front = np.exp(-((v - 0.93) / 0.035) ** 2)
     trail = (v ** 2.2) * 0.45
     i = (front + trail) * (0.55 + 0.6 * breakup) * (1 - smoothstep(0.97, 1.0, v)) * smoothstep(0.0, 0.1, v)
@@ -613,7 +625,7 @@ def bomb_ring():
 
 def beam(rel, w, h, seed, core=0.13, pulses=6):
     u, v = grid(h, w)
-    n = spectral(h, w, 1.5, seed, ax=1.2, ay=0.25)
+    n = spectral(h, w, 1.6, seed, ay=5.0)
     across = np.exp(-((u - 0.5) / core) ** 2) + np.exp(-((u - 0.5) / 0.34) ** 2) * 0.35
     bands = 0.75 + 0.25 * np.sin(v * TAU * pulses) ** 2
     i = across * bands * (0.6 + 0.5 * n)
@@ -705,7 +717,7 @@ def logo():
     disk_t = (dr - rs * 1.35) / (rs * 3.2)
     disk_mask = (disk_t > 0) & (disk_t < 1)
     ang = np.arctan2(dz, x)
-    streak = spectral(256, 1024, 1.6, 303, ax=0.12, ay=1.0)
+    streak = spectral(256, 1024, 1.8, 303, ax=8.0)
     n = sample_wrap(streak, ang / TAU * 3, np.clip(disk_t, 0, 1))
     dop = 1 + 0.6 * np.cos(ang)
     disk_i = np.where(disk_mask, np.clip(1 - disk_t, 0, 1) ** 1.6 * (0.35 + 0.8 * n) * dop, 0)

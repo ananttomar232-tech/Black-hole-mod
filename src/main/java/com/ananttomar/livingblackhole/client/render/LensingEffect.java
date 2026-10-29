@@ -41,6 +41,11 @@ public final class LensingEffect {
     private LensingEffect() {
     }
 
+    /** True once the lensing passes compiled and have been used for a frame. */
+    public static boolean isReady() {
+        return lensPass != null && !failed;
+    }
+
     public static void reset() {
         close();
         failed = false;
