@@ -1,0 +1,26 @@
+{
+  "display": {
+    "icon": {
+      "item": "minecraft:nether_star"
+    },
+    "title": {
+      "translate": "advancements.livingblackhole.cosmic_savior.title"
+    },
+    "description": {
+      "translate": "advancements.livingblackhole.cosmic_savior.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "triggered": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "parent": "livingblackhole:defuser",
+  "rewards": {
+    "experience": 250
+  }
+}

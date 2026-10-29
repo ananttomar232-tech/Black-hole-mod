@@ -1,0 +1,32 @@
+{
+  "display": {
+    "icon": {
+      "item": "livingblackhole:compressed_matter"
+    },
+    "title": {
+      "translate": "advancements.livingblackhole.event_horizon.title"
+    },
+    "description": {
+      "translate": "advancements.livingblackhole.event_horizon.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "has_matter": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "livingblackhole:compressed_matter"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "parent": "livingblackhole:root"
+}

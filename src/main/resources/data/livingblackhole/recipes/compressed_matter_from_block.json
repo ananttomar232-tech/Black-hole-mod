@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "livingblackhole:compressed_matter_block"
+    }
+  ],
+  "result": {
+    "item": "livingblackhole:compressed_matter",
+    "count": 9
+  }
+}

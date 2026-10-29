@@ -1,0 +1,29 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+issueTrackerURL="https://github.com/ananttomar232-tech/Black-hole-mod/issues"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+displayURL="https://github.com/ananttomar232-tech/Black-hole-mod"
+logoFile="logo.png"
+logoBlur=false
+credits="Singularity physics, shaders, models, textures and sound design built for Forge 1.20.1."
+authors="${mod_authors}"
+description='''${mod_description}'''
+
+[[dependencies.${mod_id}]]
+    modId="forge"
+    mandatory=true
+    versionRange="${forge_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"

@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "CAC",
+    "AEA",
+    "CAC"
+  ],
+  "key": {
+    "C": {
+      "item": "minecraft:crying_obsidian"
+    },
+    "A": {
+      "item": "minecraft:amethyst_shard"
+    },
+    "E": {
+      "item": "minecraft:ender_eye"
+    }
+  },
+  "result": {
+    "item": "livingblackhole:pocket_black_hole"
+  },
+  "show_notification": true
+}

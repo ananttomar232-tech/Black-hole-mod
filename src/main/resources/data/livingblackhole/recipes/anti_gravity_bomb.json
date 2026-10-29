@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "equipment",
+  "ingredients": [
+    {
+      "item": "livingblackhole:core_fragment"
+    },
+    {
+      "item": "livingblackhole:core_fragment"
+    },
+    {
+      "item": "livingblackhole:core_fragment"
+    },
+    {
+      "item": "livingblackhole:compressed_matter"
+    }
+  ],
+  "result": {
+    "item": "livingblackhole:anti_gravity_bomb"
+  }
+}

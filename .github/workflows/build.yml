@@ -1,0 +1,156 @@
+name: Build Living Black Hole
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Read mod version
+        run: echo "MOD_VERSION=$(grep '^mod_version=' gradle.properties | cut -d= -f2 | tr -d '\r')" >> "$GITHUB_ENV"
+
+      - name: Build mod jar
+        run: |
+          chmod +x gradlew
+          ./gradlew build --no-daemon
+
+      - name: Verify jar contents
+        run: |
+          ls -la build/libs
+          JAR=$(ls build/libs/livingblackhole-*.jar | grep -v -E 'sources|slim' | head -n1)
+          echo "JAR=$JAR" >> "$GITHUB_ENV"
+          unzip -l "$JAR" | grep -E 'mods.toml|livingblackhole.mixins.json|livingblackhole.refmap.json|LivingBlackHole.class'
+          unzip -p "$JAR" META-INF/MANIFEST.MF
+
+      - name: Upload jar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LivingBlackHole-${{ env.MOD_VERSION }}-forge-1.20.1
+          path: ${{ env.JAR }}
+
+      # ---------------------------------------------------------------- runtime verification
+
+      - name: Dedicated server self-test
+        id: servertest
+        continue-on-error: true
+        run: |
+          mkdir -p run evidence
+          echo "eula=true" > run/eula.txt
+          timeout 1200 ./gradlew runServer -Pselftest --no-daemon > evidence/server-run.log 2>&1 || true
+          cp run/logs/latest.log evidence/server-latest.log 2>/dev/null || true
+          grep "\[SELFTEST\]" evidence/server-run.log || tail -n 80 evidence/server-run.log
+          cat run/selftest-server.txt
+          grep -q "RESULT: PASS" run/selftest-server.txt
+
+      - name: Install virtual display
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q xvfb libgl1-mesa-dri mesa-utils zip
+
+      - name: Client cinematic self-test
+        id: clienttest
+        continue-on-error: true
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          mkdir -p run/config evidence
+          printf '%s\n' \
+            'version:3465' \
+            'onboardAccessibility:false' \
+            'pauseOnLostFocus:false' \
+            'renderDistance:10' \
+            'simulationDistance:8' \
+            'guiScale:2' \
+            'graphicsMode:1' \
+            'maxFps:60' \
+            'enableVsync:false' \
+            'fullscreen:false' \
+            'narrator:0' \
+            'tutorialStep:none' \
+            'joinedFirstServer:true' \
+            'skipMultiplayerWarning:true' \
+            'soundCategory_master:0.0' > run/options.txt
+          printf 'earlyWindowControl = false\n' > run/config/fml.toml
+          timeout 2400 xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClient -Pselftest --no-daemon > evidence/client-run.log 2>&1 || true
+          cp run/logs/latest.log evidence/client-latest.log 2>/dev/null || true
+          grep "\[SELFTEST\]" evidence/client-run.log || tail -n 120 evidence/client-run.log
+          cat run/selftest-client.txt
+          grep -q "RESULT: PASS" run/selftest-client.txt
+
+      - name: Collect evidence
+        if: always()
+        run: |
+          mkdir -p evidence
+          cp run/selftest-*.txt evidence/ 2>/dev/null || true
+          cp run/screenshots/lbh_*.png evidence/ 2>/dev/null || true
+          for f in evidence/server-latest.log evidence/client-latest.log; do
+            [ -f "$f" ] && grep -n -E "ERROR|Exception|FATAL|Missing|missing|Unable|Couldn't|Failed" "$f" | grep -v -i -E "realms|telemetry|narrator|OpenAL|sound engine|joystick" > "${f%.log}-issues.txt" || true
+          done
+          ls -la evidence
+          (cd evidence && zip -q -r ../selftest-evidence.zip .)
+
+      - name: Upload evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selftest-evidence
+          path: selftest-evidence.zip
+
+      - name: Publish evidence snapshot
+        if: always() && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete ci-evidence --cleanup-tag --yes || true
+          git push --delete origin ci-evidence 2>/dev/null || true
+          gh release create ci-evidence selftest-evidence.zip evidence/lbh_*.png \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "CI self-test evidence (${GITHUB_SHA::7})" \
+            --notes "Screenshots and logs from the automated dedicated-server and client self-tests of commit ${GITHUB_SHA}. Server: ${{ steps.servertest.outcome }}, client: ${{ steps.clienttest.outcome }}." || \
+          gh release create ci-evidence selftest-evidence.zip --target "$GITHUB_SHA" --prerelease --title "CI self-test evidence (${GITHUB_SHA::7})" --notes "Self-test logs."
+
+      - name: Require passing self-tests
+        if: steps.servertest.outcome != 'success' || steps.clienttest.outcome != 'success'
+        run: |
+          echo "Server self-test: ${{ steps.servertest.outcome }}"
+          echo "Client self-test: ${{ steps.clienttest.outcome }}"
+          exit 1
+
+      - name: Publish GitHub release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${MOD_VERSION}"
+          OUT="LivingBlackHole-${MOD_VERSION}-forge-1.20.1.jar"
+          cp "$JAR" "$OUT"
+          gh release delete "$TAG" --cleanup-tag --yes || true
+          git push --delete origin "$TAG" 2>/dev/null || true
+          gh release create "$TAG" "$OUT" \
+            --target "$GITHUB_SHA" \
+            --title "Living Black Hole ${MOD_VERSION} (Forge 1.20.1)" \
+            --notes "Verified build of ${GITHUB_SHA}: compiled, then played end-to-end by the automated dedicated-server and client self-tests. Drop ${OUT} into your .minecraft/mods folder (Minecraft 1.20.1, Forge 47.x)." \
+            --latest

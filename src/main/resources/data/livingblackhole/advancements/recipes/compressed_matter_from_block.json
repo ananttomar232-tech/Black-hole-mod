@@ -1,0 +1,34 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_item": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "livingblackhole:compressed_matter_block"
+            ]
+          }
+        ]
+      }
+    },
+    "has_the_recipe": {
+      "trigger": "minecraft:recipe_unlocked",
+      "conditions": {
+        "recipe": "livingblackhole:compressed_matter_from_block"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_item",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "livingblackhole:compressed_matter_from_block"
+    ]
+  }
+}
