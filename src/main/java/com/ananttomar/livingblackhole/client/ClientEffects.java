@@ -204,11 +204,11 @@ public final class ClientEffects {
         return s * (float) (double) Config.SCREEN_SHAKE.get();
     }
 
-    public static float flash(float partialTick) {
+    public static float flashAlpha(float partialTick) {
         return Mth.lerp(partialTick, flashO, flash);
     }
 
-    public static float redFlash(float partialTick) {
+    public static float redFlashAlpha(float partialTick) {
         return Mth.lerp(partialTick, redFlashO, redFlash);
     }
 

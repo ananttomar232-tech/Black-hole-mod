@@ -87,11 +87,11 @@ public final class SingularityHudOverlay {
     }
 
     private static void drawFlashes(GuiGraphics g, int w, int h, float partialTick) {
-        float red = ClientEffects.redFlash(partialTick);
+        float red = ClientEffects.redFlashAlpha(partialTick);
         if (red > 0.01F) {
             g.fill(0, 0, w, h, argb(Math.min(0.75F, red * 0.75F), 0.85F, 0.0F, 0.0F));
         }
-        float white = ClientEffects.flash(partialTick);
+        float white = ClientEffects.flashAlpha(partialTick);
         if (white > 0.01F) {
             g.fill(0, 0, w, h, argb(Math.min(1.0F, white * 1.1F), 1.0F, 0.98F, 0.95F));
         }

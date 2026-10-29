@@ -63,8 +63,7 @@ public class StreakParticle extends GlowParticle {
     }
 
     @Override
-    public void render(VertexConsumer buffer, Camera camera, float partialTick) {
-        this.alpha = this.baseAlpha * fade(partialTick);
+    protected void renderQuad(VertexConsumer buffer, Camera camera, float partialTick) {
         Vec3 cam = camera.getPosition();
         float px = (float) (Mth.lerp(partialTick, this.xo, this.x) - cam.x());
         float py = (float) (Mth.lerp(partialTick, this.yo, this.y) - cam.y());
@@ -74,7 +73,7 @@ public class StreakParticle extends GlowParticle {
         float speed = vel.length();
         float width = getQuadSize(partialTick);
         if (speed < 1.0E-4F) {
-            super.render(buffer, camera, partialTick);
+            super.renderQuad(buffer, camera, partialTick);
             return;
         }
         vel.div(speed);
@@ -85,7 +84,7 @@ public class StreakParticle extends GlowParticle {
         toCam.normalize();
         Vector3f side = new Vector3f(vel).cross(toCam);
         if (side.lengthSquared() < 1.0E-6F) {
-            super.render(buffer, camera, partialTick);
+            super.renderQuad(buffer, camera, partialTick);
             return;
         }
         side.normalize().mul(width);

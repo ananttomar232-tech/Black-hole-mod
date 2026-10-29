@@ -96,7 +96,23 @@ public class GlowParticle extends TextureSheetParticle {
 
     @Override
     public void render(VertexConsumer buffer, Camera camera, float partialTick) {
-        this.alpha = this.baseAlpha * fade(partialTick);
+        // Additive blending: fade by scaling colour, keeping alpha above the particle shader's
+        // 0.1 discard threshold so soft sprites never pop out.
+        float r = this.rCol;
+        float g = this.gCol;
+        float b = this.bCol;
+        float k = this.baseAlpha * fade(partialTick);
+        this.rCol = r * k;
+        this.gCol = g * k;
+        this.bCol = b * k;
+        this.alpha = 1.0F;
+        renderQuad(buffer, camera, partialTick);
+        this.rCol = r;
+        this.gCol = g;
+        this.bCol = b;
+    }
+
+    protected void renderQuad(VertexConsumer buffer, Camera camera, float partialTick) {
         super.render(buffer, camera, partialTick);
     }
 

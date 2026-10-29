@@ -212,24 +212,33 @@ public class BlackHoleRenderer extends EntityRenderer<BlackHoleEntity> {
         float intensity = (0.55F + instability * 0.45F) * flicker;
         float scroll = -time * 0.045F * (1.0F + instability * 2.0F);
 
+        int segments = 8;
+        float start = horizon * 0.85F;
         for (int sign = -1; sign <= 1; sign += 2) {
             Vector3f dir = new Vector3f(axis).mul(sign);
-            Vector3f base = new Vector3f(dir).mul(horizon * 0.85F);
-            Vector3f tip = new Vector3f(dir).mul(horizon * 0.85F + length);
             for (int layer = 0; layer < 2; layer++) {
-                float w0 = horizon * (layer == 0 ? 0.22F : 0.55F);
-                float w1 = horizon * (layer == 0 ? 0.9F : 2.1F);
+                float wBase = horizon * (layer == 0 ? 0.22F : 0.55F);
+                float wTip = horizon * (layer == 0 ? 0.9F : 2.1F);
                 float k = intensity * (layer == 0 ? 1.0F : 0.35F);
-                Vector3f s0 = sideVector(dir, base, center, cam).mul(w0);
-                Vector3f s1 = sideVector(dir, tip, center, cam).mul(w1);
-                float v0 = scroll + layer * 0.37F;
-                float v1 = v0 + length / (horizon * 4.0F);
-                RenderHelper.quad(vc, m, n,
-                        base.x - s0.x, base.y - s0.y, base.z - s0.z, 0.0F, v0,
-                        base.x + s0.x, base.y + s0.y, base.z + s0.z, 1.0F, v0,
-                        tip.x + s1.x, tip.y + s1.y, tip.z + s1.z, 1.0F, v1,
-                        tip.x - s1.x, tip.y - s1.y, tip.z - s1.z, 0.0F, v1,
-                        0.42F * k, 0.6F * k, 1.0F * k, 1.0F);
+                for (int seg = 0; seg < segments; seg++) {
+                    float t0 = seg / (float) segments;
+                    float t1 = (seg + 1) / (float) segments;
+                    Vector3f a = new Vector3f(dir).mul(start + length * t0);
+                    Vector3f b = new Vector3f(dir).mul(start + length * t1);
+                    Vector3f s0 = sideVector(dir, a, center, cam).mul(Mth.lerp(t0, wBase, wTip));
+                    Vector3f s1 = sideVector(dir, b, center, cam).mul(Mth.lerp(t1, wBase, wTip));
+                    float v0 = scroll + layer * 0.37F + length * t0 / (horizon * 4.0F);
+                    float v1 = scroll + layer * 0.37F + length * t1 / (horizon * 4.0F);
+                    // Bright at the nozzle, dissolving into nothing at the tip.
+                    float ka = k * (float) Math.pow(1.0F - t0, 1.4);
+                    float kb = k * (float) Math.pow(1.0F - t1, 1.4);
+                    RenderHelper.quadGradient(vc, m, n,
+                            a.x - s0.x, a.y - s0.y, a.z - s0.z, 0.0F, v0,
+                            a.x + s0.x, a.y + s0.y, a.z + s0.z, 1.0F, v0,
+                            b.x + s1.x, b.y + s1.y, b.z + s1.z, 1.0F, v1,
+                            b.x - s1.x, b.y - s1.y, b.z - s1.z, 0.0F, v1,
+                            0.42F * ka, 0.6F * ka, 1.0F * ka, 0.42F * kb, 0.6F * kb, 1.0F * kb);
+                }
             }
         }
     }
