@@ -42,6 +42,9 @@ public final class LensingEffect {
     private static int height = -1;
     private static int framesApplied;
     private static final Map<String, Integer> SKIPS = new LinkedHashMap<>();
+    private static final Matrix4f VIEW = new Matrix4f();
+    private static final Matrix4f PROJECTION = new Matrix4f();
+    private static boolean viewCaptured;
 
     private LensingEffect() {
     }
@@ -110,9 +113,28 @@ public final class LensingEffect {
     }
 
     /**
-     * Called at the end of level rendering with the view and projection matrices of that frame.
+     * Records the camera rotation and projection of the frame being drawn. The pose stack handed
+     * to the end-of-level stage no longer carries the rotation, so both are taken from an in-level
+     * stage instead.
      */
-    public static void apply(Matrix4f view, Matrix4f projection, Camera camera, float partialTick) {
+    public static void captureView(Matrix4f pose, Matrix4f projection) {
+        VIEW.set(pose);
+        PROJECTION.set(projection);
+        viewCaptured = true;
+    }
+
+    /**
+     * Called at the end of level rendering; uses the matrices recorded by {@link #captureView}
+     * earlier in the same frame.
+     */
+    public static void apply(Camera camera, float partialTick) {
+        if (!viewCaptured) {
+            skip("no view this frame");
+            return;
+        }
+        viewCaptured = false;
+        Matrix4f view = VIEW;
+        Matrix4f projection = PROJECTION;
         if (!Config.LENSING.get()) {
             skip("disabled in config");
             return;

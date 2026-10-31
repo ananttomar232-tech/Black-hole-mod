@@ -14,7 +14,6 @@ import net.minecraftforge.client.event.ViewportEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import org.joml.Matrix4f;
 
 @Mod.EventBusSubscriber(modid = LivingBlackHole.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public final class ClientEvents {
@@ -41,9 +40,10 @@ public final class ClientEvents {
     @SubscribeEvent
     public static void onRenderStage(RenderLevelStageEvent event) {
         if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
+            LensingEffect.captureView(event.getPoseStack().last().pose(), event.getProjectionMatrix());
             BeamEffects.render(event.getPoseStack(), event.getCamera(), event.getPartialTick());
         } else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
-            LensingEffect.apply(new Matrix4f(event.getPoseStack().last().pose()), event.getProjectionMatrix(), event.getCamera(), event.getPartialTick());
+            LensingEffect.apply(event.getCamera(), event.getPartialTick());
         }
     }
 
