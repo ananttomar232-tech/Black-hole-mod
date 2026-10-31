@@ -17,12 +17,10 @@ public final class ModCreativeTabs {
             .icon(() -> new ItemStack(ModItems.POCKET_BLACK_HOLE.get()))
             .displayItems((parameters, output) -> {
                 output.accept(ModItems.POCKET_BLACK_HOLE.get());
-                // A unit one shot away from breaching, for showcases and testing.
+                // A unit one chunk away from breaching, for showcases and testing.
                 ItemStack critical = new ItemStack(ModItems.POCKET_BLACK_HOLE.get());
-                PocketBlackHoleItem.setConsumed(critical, Math.max(0, PocketBlackHoleItem.limit() - 20));
+                PocketBlackHoleItem.setConsumed(critical, Math.max(0, PocketBlackHoleItem.limit() - 1));
                 output.accept(critical);
-                output.accept(ModItems.COMPRESSED_MATTER.get());
-                output.accept(ModItems.COMPRESSED_MATTER_BLOCK.get());
                 output.accept(ModItems.CORE_FRAGMENT.get());
                 output.accept(ModItems.ANTI_GRAVITY_BOMB.get());
             })

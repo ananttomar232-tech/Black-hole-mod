@@ -260,35 +260,43 @@ def warning_beep():
     write_ogg("warning_beep", fade(normalize(x, 0.75)))
 
 
-def pocket_charge():
-    L = 1.7
-    t = t_axis(L)
-    p = t / L
-    f = 180 + 900 * p ** 1.6
-    tone = osc(f, t=t, shape="saw") * 0.35 + osc(f * 2.01, t=t) * 0.2 + osc(f * 0.5, t=t) * 0.25
-    tone *= 1 + 0.4 * np.sin(2 * np.pi * (4 + 20 * p) * t)
-    tone = biquad(tone, "lp", 900 + 5000 * p)
-    whoosh = biquad(noise(L), "bp", 300 + 3000 * p, 1.5) * p ** 2 * 0.8
-    crackle = np.zeros(len(t))
-    for i in RNG.integers(0, len(t), 220):
-        crackle[i] = RNG.uniform(-1, 1) * (i / len(t))
-    crackle = biquad(crackle, "hp", 2000)
-    x = (tone + whoosh + crackle * 0.8) * env_adsr(len(t), 0.05, 0.1, 0.0, 0.12, 1.0)
-    write_ogg("pocket_charge", fade(normalize(saturate(normalize(x), 1.3), 0.8), 0.01, 0.1))
-
-
-def pocket_fire():
-    L = 1.8
+def vacuum():
+    """The Pocket Black Hole swallowing a chunk: a rising suction howl, rumble of rock being torn
+    loose, then the implosion slam as 4,096 blocks vanish at once."""
+    L = 2.6
     x = np.zeros(int(L * SR))
-    t = t_axis(0.35)
-    zap = osc(3200 * np.exp(-t / 0.06) + 140, t=t, shape="saw") * env_exp(t, 0.12)
-    place(x, zap * 0.8, 0.0)
-    t2 = t_axis(1.4)
-    suck = biquad(noise(1.4), "bp", 4000 * np.exp(-t2 / 0.35) + 150, 2.0) * env_adsr(len(t2), 0.02, 0.2, 0.5, 0.7, 0.6)
-    place(x, suck * 1.6, 0.03)
-    place(x, sub_boom(1.0, 110, 40, 0.05, 0.25) * 1.2, 0.0)
+    t = t_axis(1.25)
+    p = t / 1.25
+    howl = biquad(noise(1.25), "bp", 250 + 5200 * p ** 2.2, 2.2) * p ** 1.6 * 1.6
+    whistle = osc(300 + 2200 * p ** 2, t=t) * 0.18 * p ** 3
+    rumble = biquad(noise(1.25), "lp", 90 + 260 * p) * (0.3 + 0.9 * p)
+    place(x, howl + whistle + rumble, 0.0)
+    debris = np.zeros(int(1.25 * SR))
+    for i in RNG.integers(0, len(debris), 300):
+        debris[i] = RNG.uniform(-1, 1) * (i / len(debris)) ** 1.5
+    place(x, biquad(debris, "bp", 1400, 0.9) * 1.4, 0.0)
+    place(x, sub_boom(1.3, 150, 34, 0.05, 0.35) * 1.7, 1.22)
+    t2 = t_axis(0.25)
+    place(x, biquad(noise(0.25), "hp", 1800) * env_exp(t2, 0.03) * 0.9, 1.22)
+    x = reverb(x, 2.0, 0.3, 3500)
+    write_ogg("vacuum", fade(normalize(saturate(normalize(x), 1.5)), 0.02, 0.3))
+
+
+def chunk_place():
+    """A Compressed Chunk unfolding: an outward whoosh, a heavy landing thud and settling stone."""
+    L = 2.0
+    x = np.zeros(int(L * SR))
+    t = t_axis(0.6)
+    p = t / 0.6
+    whoosh = biquad(noise(0.6), "bp", 4200 * (1 - p) ** 1.5 + 300, 1.6) * np.sin(np.pi * p) ** 1.2 * 1.3
+    place(x, whoosh, 0.0)
+    place(x, sub_boom(1.2, 120, 40, 0.04, 0.3) * 1.6, 0.42)
+    settle = np.zeros(int(1.2 * SR))
+    for i in RNG.integers(0, len(settle), 220):
+        settle[i] = RNG.uniform(-1, 1) * np.exp(-i / SR / 0.35)
+    place(x, biquad(settle, "bp", 900, 0.8) * 1.1, 0.45)
     x = reverb(x, 1.6, 0.25, 4000)
-    write_ogg("pocket_fire", fade(normalize(saturate(normalize(x), 1.5)), 0.001, 0.25))
+    write_ogg("chunk_place", fade(normalize(saturate(normalize(x), 1.4)), 0.005, 0.25))
 
 
 def collapse_buildup():
@@ -408,8 +416,8 @@ def main():
     containment_breach()
     alarm()
     warning_beep()
-    pocket_charge()
-    pocket_fire()
+    vacuum()
+    chunk_place()
     collapse_buildup()
     singularity_explosion()
     bomb_throw()

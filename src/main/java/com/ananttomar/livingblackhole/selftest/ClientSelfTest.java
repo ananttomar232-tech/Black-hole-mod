@@ -4,7 +4,10 @@ import com.ananttomar.livingblackhole.LivingBlackHole;
 import com.ananttomar.livingblackhole.client.ClientEffects;
 import com.ananttomar.livingblackhole.client.ClientSingularityState;
 import com.ananttomar.livingblackhole.client.particle.ModParticleProviders;
+import com.ananttomar.livingblackhole.client.fx.ChunkEffects;
+import com.ananttomar.livingblackhole.client.fx.GravityPull;
 import com.ananttomar.livingblackhole.client.render.BeamEffects;
+import com.ananttomar.livingblackhole.item.CompressedChunkItem;
 import com.ananttomar.livingblackhole.client.render.LensingEffect;
 import com.ananttomar.livingblackhole.entity.AntiGravityBombEntity;
 import com.ananttomar.livingblackhole.entity.BlackHoleEntity;
@@ -12,7 +15,6 @@ import com.ananttomar.livingblackhole.item.PocketBlackHoleItem;
 import com.ananttomar.livingblackhole.registry.ModBlocks;
 import com.ananttomar.livingblackhole.registry.ModItems;
 import com.ananttomar.livingblackhole.registry.ModSounds;
-import com.ananttomar.livingblackhole.singularity.PocketBeamLogic;
 import com.ananttomar.livingblackhole.singularity.SingularityEvent;
 import com.ananttomar.livingblackhole.singularity.SingularityManager;
 import com.ananttomar.livingblackhole.singularity.SingularitySavedData;
@@ -58,8 +60,9 @@ import java.util.function.Consumer;
 
 /**
  * Scripted cinematic run of the whole mod in a real client (CI under Xvfb), enabled only with
- * {@code -Dlivingblackhole.selftest=true}. Creates a world, breaches a Pocket Black Hole, films
- * the singularity, the beam, a Core Fragment, the bomb, the collapse and the aftermath, checks
+ * {@code -Dlivingblackhole.selftest=true}. Creates a world, swallows a chunk and pastes it back,
+ * breaches the Pocket Black Hole on the tenth chunk, tests the pull on the player, films the
+ * singularity, a Core Fragment, the bomb, the collapse and the aftermath, checks
  * every model, texture, particle sprite, sound and the lensing shader, then quits.
  */
 @Mod.EventBusSubscriber(modid = LivingBlackHole.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
@@ -76,6 +79,9 @@ public final class ClientSelfTest {
     private static Vec3 center;
     private static Vec3 vantage;
     private static BlockPos fragment;
+    private static BlockPos target;
+    private static Vec3 pullStart;
+    private static int pullTicksAtStart;
     private static int shots;
     private static int lastState = -1;
     private static int stateSeenAt;
@@ -155,30 +161,69 @@ public final class ClientSelfTest {
                         BlockPos spawn = level.getSharedSpawnPos();
                         int x = spawn.getX() + 24;
                         int z = spawn.getZ();
-                        int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+                        int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
                         p.getAbilities().flying = true;
                         p.onUpdateAbilities();
-                        p.connection.teleport(x + 0.5, y + 1.0, z + 0.5, -90.0F, 50.0F);
-                        p.getInventory().setItem(1, critical());
-                        p.getInventory().setItem(2, new ItemStack(ModItems.COMPRESSED_MATTER.get(), 32));
-                        p.getInventory().setItem(3, new ItemStack(ModItems.CORE_FRAGMENT.get(), 3));
-                        p.getInventory().setItem(4, new ItemStack(ModItems.ANTI_GRAVITY_BOMB.get(), 2));
-                        p.getInventory().setItem(5, new ItemStack(ModItems.COMPRESSED_MATTER_BLOCK.get(), 8));
-                        p.getInventory().setItem(6, new ItemStack(ModItems.POCKET_BLACK_HOLE.get()));
+                        // Hover above the hills looking east and down at the chunk we are about to eat.
+                        p.connection.teleport(x + 0.5, y + 10.0, z + 0.5, -90.0F, 28.0F);
+                        p.getInventory().setItem(0, pocketAt(PocketBlackHoleItem.limit() - 2));
+                        p.getInventory().setItem(1, new ItemStack(ModItems.CORE_FRAGMENT.get(), 3));
+                        p.getInventory().setItem(2, new ItemStack(ModItems.ANTI_GRAVITY_BOMB.get(), 2));
                         p.getInventory().selected = 0;
+                        target = new BlockPos(x + 22, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x + 22, z) - 1, z);
                     });
                 }
                 if (t == 160) {
-                    shot(mc, "00_hotbar_items");
+                    shot(mc, "00_before_capture");
                     server(level -> {
                         ServerPlayer p = player();
-                        ItemStack pocket = critical();
-                        p.setItemInHand(InteractionHand.MAIN_HAND, pocket);
-                        PocketBeamLogic.fire(level, p, pocket, InteractionHand.MAIN_HAND, 1.0F);
+                        boolean ok = PocketBlackHoleItem.consume(level, p, p.getMainHandItem(), InteractionHand.MAIN_HAND, target);
+                        check(ok, "Pocket Black Hole swallowed a 16x16x16 chunk");
+                        check(findChunk(p) >= 0, "Compressed Chunk delivered to the inventory");
+                    });
+                }
+                if (t == 164) {
+                    shot(mc, "01_vortex");
+                }
+                if (t == 176) {
+                    check(ChunkEffects.captures > 0, "swirling capture effect played on the client");
+                    shot(mc, "02_vortex_drain");
+                }
+                if (t == 215) {
+                    shot(mc, "03_chunk_hole");
+                    server(level -> {
+                        ServerPlayer p = player();
+                        int slot = findChunk(p);
+                        if (slot < 0) {
+                            check(false, "compressed chunk available to place");
+                            return;
+                        }
+                        // Set it down as a floating island further along the valley.
+                        BlockPos anchor = target.offset(24, 14, 6);
+                        p.getCooldowns().removeCooldown(ModItems.COMPRESSED_CHUNK.get());
+                        boolean ok = CompressedChunkItem.place(level, p, p.getInventory().getItem(slot), anchor);
+                        check(ok && findChunk(p) < 0, "Compressed Chunk pasted back into the world and consumed");
+                    });
+                }
+                if (t == 219) {
+                    shot(mc, "04_chunk_unfold");
+                }
+                if (t == 270) {
+                    check(ChunkEffects.placements > 0, "placement effect played on the client");
+                    shot(mc, "05_floating_chunk");
+                }
+                if (t == 290) {
+                    server(level -> {
+                        ServerPlayer p = player();
+                        p.getCooldowns().removeCooldown(ModItems.POCKET_BLACK_HOLE.get());
+                        BlockPos second = target.offset(-4, 0, -26);
+                        second = new BlockPos(second.getX(), level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, second.getX(), second.getZ()) - 1, second.getZ());
+                        PocketBlackHoleItem.consume(level, p, p.getMainHandItem(), InteractionHand.MAIN_HAND, second);
                         List<SingularityEvent> events = SingularitySavedData.get(level.getServer()).snapshot();
-                        check(!events.isEmpty(), "breach created a singularity event");
+                        check(!events.isEmpty(), "10th chunk breached containment and created a singularity event");
                         if (!events.isEmpty()) {
                             center = events.get(0).center;
+                            check(center.distanceTo(p.position()) < 4.0, "black hole spawned at the player's location");
                             fragment = events.get(0).fragments[0];
                             for (BlockPos f : events.get(0).fragments) {
                                 if (level.canSeeSky(f.above())) {
@@ -188,74 +233,89 @@ public final class ClientSelfTest {
                             }
                         }
                         check(p.getMainHandItem().isEmpty(), "pocket black hole deleted on breach");
+                        check(findChunk(p) >= 0, "player keeps the compressed chunk needed for the bomb");
                     });
                 }
-                if (t == 168) {
-                    shot(mc, "01_containment_breach");
+                if (t == 296) {
+                    shot(mc, "06_containment_breach");
                 }
-                if (t == 185) {
+                if (t == 312) {
                     check(sawHudEvent, "HUD received the singularity event");
-                    shot(mc, "02_breach_hud");
+                    shot(mc, "07_breach_hud");
                 }
-                if (t == 200 && center != null) {
+                if (t == 330 && center != null) {
                     vantage = center.add(-26.0, 9.0, 3.0);
                     lookAt(vantage, center);
                 }
-                if (t == 230) {
-                    shot(mc, "03_birth");
+                if (t == 360) {
+                    shot(mc, "08_birth");
                 }
-                if (t == 330) {
-                    shot(mc, "04_living_black_hole");
+                if (t == 460) {
+                    shot(mc, "09_living_black_hole");
                 }
-                if (t == 430) {
+                if (t == 560) {
                     check(findBlackHole(mc) != null, "black hole entity tracked by the client");
-                    shot(mc, "05_devouring");
+                    shot(mc, "10_devouring");
+                    next(5);
+                }
+            }
+            case 5 -> {
+                // Gravity pull on the player, on a bedrock walkway the singularity cannot eat.
+                if (t == 1 && center != null) {
+                    server(level -> {
+                        int y0 = (int) Math.floor(center.y) - 3;
+                        int cz = (int) Math.floor(center.z);
+                        for (int dx = 5; dx <= 30; dx++) {
+                            for (int dz = -1; dz <= 1; dz++) {
+                                int x = (int) Math.floor(center.x) - dx;
+                                level.setBlock(new BlockPos(x, y0, cz + dz), Blocks.BEDROCK.defaultBlockState(), 3);
+                                for (int dy = 1; dy <= 3; dy++) {
+                                    level.setBlock(new BlockPos(x, y0 + dy, cz + dz), Blocks.AIR.defaultBlockState(), 3);
+                                }
+                            }
+                        }
+                        ServerPlayer p = player();
+                        p.getAbilities().flying = false;
+                        p.onUpdateAbilities();
+                        p.connection.teleport(Math.floor(center.x) - 11 + 0.5, y0 + 1.0, cz + 0.5, 90.0F, 15.0F);
+                    });
+                }
+                if (t == 30) {
+                    pullStart = mc.player.position();
+                    pullTicksAtStart = GravityPull.ticksApplied;
+                }
+                if (t == 90) {
+                    Vec3 now = mc.player.position();
+                    double before = horizontal(pullStart, center);
+                    double after = horizontal(now, center);
+                    check(GravityPull.ticksApplied > pullTicksAtStart && after < before - 0.6,
+                            String.format(java.util.Locale.ROOT, "standing player dragged toward the singularity (%.1f -> %.1f blocks)", before, after));
+                    shot(mc, "11_gravity_pull");
+                    pullStart = now;
+                    mc.options.keyUp.setDown(true);
+                    mc.options.keySprint.setDown(true);
+                }
+                if (t == 150) {
+                    mc.options.keyUp.setDown(false);
+                    mc.options.keySprint.setDown(false);
+                    double before = horizontal(pullStart, center);
+                    double after = horizontal(mc.player.position(), center);
+                    check(after > before + 3.0, String.format(java.util.Locale.ROOT, "sprinting escapes the pull (%.1f -> %.1f blocks)", before, after));
+                    server(level -> {
+                        ServerPlayer p = player();
+                        p.getAbilities().flying = true;
+                        p.onUpdateAbilities();
+                    });
                     next(2);
                 }
             }
             case 2 -> {
-                if (t == 1 && center != null) {
-                    // A grassy spot outside the crater, aimed at the ground between us and the hole.
-                    server(level -> {
-                        int x = (int) Math.floor(center.x - 34);
-                        int z = (int) Math.floor(center.z - 22);
-                        // MOTION_BLOCKING includes leaves, so the camera never ends up inside a canopy.
-                        int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
-                        Vec3 eye = new Vec3(x + 0.5, y + 6.0, z + 0.5);
-                        Vec3 aim = center.subtract(eye);
-                        float yaw = (float) Math.toDegrees(Math.atan2(-aim.x, aim.z));
-                        ServerPlayer p = player();
-                        p.getAbilities().flying = true;
-                        p.onUpdateAbilities();
-                        p.connection.teleport(eye.x, eye.y - p.getEyeHeight(), eye.z, yaw, 38.0F);
-                    });
-                }
-                if (t == 100) {
-                    mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
-                }
-                if (t == 140) {
-                    server(level -> {
-                        ServerPlayer p = player();
-                        ItemStack pocket = new ItemStack(ModItems.POCKET_BLACK_HOLE.get());
-                        p.setItemInHand(InteractionHand.MAIN_HAND, pocket);
-                        PocketBeamLogic.fire(level, p, pocket, InteractionHand.MAIN_HAND, 1.0F);
-                    });
-                }
-                if (t == 144) {
-                    check(BeamEffects.activeCount() > 0, "pocket beam effect received by the client");
-                    shot(mc, "06_pocket_beam");
-                }
-                if (t == 150) {
-                    check(BeamEffects.framesDrawn > 0, "pocket beam rendered in " + BeamEffects.framesDrawn + " frames");
-                    shot(mc, "06b_matter_stream");
-                    mc.options.setCameraType(CameraType.FIRST_PERSON);
-                }
-                if (t == 160 && fragment != null) {
+                if (t == 10 && fragment != null) {
                     Vec3 f = Vec3.atCenterOf(fragment);
                     lookAt(f.add(-7.0, 3.5, -7.0), f.add(0.0, 0.5, 0.0));
                 }
-                if (t == 280) {
-                    shot(mc, "07_core_fragment");
+                if (t == 130) {
+                    shot(mc, "12_core_fragment");
                     server(level -> {
                         if (level.getBlockState(fragment).is(ModBlocks.CORE_FRAGMENT.get())) {
                             level.setBlock(fragment, Blocks.AIR.defaultBlockState(), 3);
@@ -263,13 +323,13 @@ public final class ClientSelfTest {
                         }
                     });
                 }
-                if (t == 295) {
-                    shot(mc, "08_fragment_secured");
+                if (t == 145) {
+                    shot(mc, "13_fragment_secured");
                 }
-                if (t == 310 && vantage != null) {
+                if (t == 160 && vantage != null) {
                     lookAt(vantage, center);
                 }
-                if (t == 400) {
+                if (t == 250) {
                     server(level -> {
                         ServerPlayer p = player();
                         AntiGravityBombEntity bomb = new AntiGravityBombEntity(level, p);
@@ -279,26 +339,26 @@ public final class ClientSelfTest {
                         level.addFreshEntity(bomb);
                     });
                 }
-                if (t == 412) {
-                    shot(mc, "09_bomb_captured");
+                if (t == 262) {
+                    shot(mc, "14_bomb_captured");
                     next(3);
                 }
             }
             case 3 -> {
                 if (lastState == BlackHoleEntity.STATE_DESTABILIZING && clock - stateSeenAt == 45) {
-                    shot(mc, "10_destabilizing");
+                    shot(mc, "15_destabilizing");
                 }
                 if (lastState == BlackHoleEntity.STATE_COLLAPSE && clock - stateSeenAt == 8) {
-                    shot(mc, "11_implosion");
+                    shot(mc, "16_implosion");
                 }
                 if (lastState == BlackHoleEntity.STATE_SHOCKWAVE) {
                     int s = clock - stateSeenAt;
                     if (s == 2) {
-                        shot(mc, "12_detonation");
+                        shot(mc, "17_detonation");
                     } else if (s == 14) {
-                        shot(mc, "13_shockwave");
+                        shot(mc, "18_shockwave");
                     } else if (s == 40) {
-                        shot(mc, "14_shockwave_expanding");
+                        shot(mc, "19_shockwave_expanding");
                     }
                 }
                 if (bh == null && lastState == BlackHoleEntity.STATE_SHOCKWAVE && ClientSingularityState.events().isEmpty()) {
@@ -311,10 +371,10 @@ public final class ClientSelfTest {
             }
             case 4 -> {
                 if (t == 30) {
-                    shot(mc, "15_neutralized");
+                    shot(mc, "20_neutralized");
                     check(ClientSingularityState.events().isEmpty(), "HUD cleared after the black hole was destroyed");
                     check(sawLensing, "gravitational lensing shader compiled and ran");
-                    check(shots >= 16, "captured " + shots + " cinematic screenshots");
+                    check(shots >= 19, "captured " + shots + " cinematic screenshots");
                 }
                 if (t >= 60 && PENDING_SHOTS.isEmpty()) {
                     finish(mc);
@@ -337,10 +397,25 @@ public final class ClientSelfTest {
         return null;
     }
 
-    private static ItemStack critical() {
+    private static ItemStack pocketAt(int consumed) {
         ItemStack stack = new ItemStack(ModItems.POCKET_BLACK_HOLE.get());
-        PocketBlackHoleItem.setConsumed(stack, PocketBlackHoleItem.limit() - 12);
+        PocketBlackHoleItem.setConsumed(stack, consumed);
         return stack;
+    }
+
+    private static int findChunk(ServerPlayer p) {
+        for (int i = 0; i < p.getInventory().getContainerSize(); i++) {
+            if (p.getInventory().getItem(i).is(ModItems.COMPRESSED_CHUNK.get())) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static double horizontal(Vec3 a, Vec3 b) {
+        double dx = a.x - b.x;
+        double dz = a.z - b.z;
+        return Math.sqrt(dx * dx + dz * dz);
     }
 
     private static void next(int newPhase) {
@@ -410,18 +485,17 @@ public final class ClientSelfTest {
 
     private static void verifyResources(Minecraft mc) {
         BakedModel missing = mc.getModelManager().getMissingModel();
-        for (Item item : new Item[]{ModItems.POCKET_BLACK_HOLE.get(), ModItems.COMPRESSED_MATTER.get(), ModItems.CORE_FRAGMENT.get(),
-                ModItems.ANTI_GRAVITY_BOMB.get(), ModItems.COMPRESSED_MATTER_BLOCK.get()}) {
+        for (Item item : new Item[]{ModItems.POCKET_BLACK_HOLE.get(), ModItems.COMPRESSED_CHUNK.get(), ModItems.CORE_FRAGMENT.get(),
+                ModItems.ANTI_GRAVITY_BOMB.get()}) {
             BakedModel model = mc.getItemRenderer().getModel(new ItemStack(item), null, null, 0);
             check(model != missing, "item model loaded: " + item);
         }
         check(mc.getBlockRenderer().getBlockModel(ModBlocks.CORE_FRAGMENT.get().defaultBlockState()) != missing, "block model loaded: core_fragment");
-        check(mc.getBlockRenderer().getBlockModel(ModBlocks.COMPRESSED_MATTER_BLOCK.get().defaultBlockState()) != missing, "block model loaded: compressed_matter_block");
 
         String[] sprites = {"item/pocket_casing", "item/pocket_core_stable", "item/pocket_core_unstable", "item/pocket_core_critical",
-                "item/pocket_ring_stable", "item/pocket_ring_unstable", "item/pocket_ring_critical", "item/pocket_ring_charging",
-                "item/compressed_matter", "item/compressed_matter_core", "item/bomb_shell", "item/bomb_band", "item/bomb_metal",
-                "block/core_fragment_crystal", "block/core_fragment_base", "block/compressed_matter_block"};
+                "item/pocket_ring_stable", "item/pocket_ring_unstable", "item/pocket_ring_critical",
+                "item/chunk_top", "item/chunk_side", "item/chunk_bottom", "item/bomb_shell", "item/bomb_band", "item/bomb_metal",
+                "block/core_fragment_crystal", "block/core_fragment_base"};
         for (String s : sprites) {
             TextureAtlasSprite sprite = mc.getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(LivingBlackHole.id(s));
             check(!sprite.contents().name().equals(MissingTextureAtlasSprite.getLocation()), "texture stitched: " + s);

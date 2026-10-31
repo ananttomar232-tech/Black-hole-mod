@@ -10,7 +10,7 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class ModNetwork {
-    private static final String PROTOCOL = "1";
+    private static final String PROTOCOL = "2";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             LivingBlackHole.id("main"), () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
@@ -31,10 +31,10 @@ public final class ModNetwork {
                 .decoder(SyncSingularityPacket::decode)
                 .consumerMainThread(SyncSingularityPacket::handle)
                 .add();
-        CHANNEL.messageBuilder(BeamFxPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
-                .encoder(BeamFxPacket::encode)
-                .decoder(BeamFxPacket::decode)
-                .consumerMainThread(BeamFxPacket::handle)
+        CHANNEL.messageBuilder(ChunkFxPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(ChunkFxPacket::encode)
+                .decoder(ChunkFxPacket::decode)
+                .consumerMainThread(ChunkFxPacket::handle)
                 .add();
         CHANNEL.messageBuilder(CinematicPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(CinematicPacket::encode)

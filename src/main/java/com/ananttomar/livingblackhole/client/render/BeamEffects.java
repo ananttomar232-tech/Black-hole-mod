@@ -1,10 +1,8 @@
 package com.ananttomar.livingblackhole.client.render;
 
 import com.ananttomar.livingblackhole.LivingBlackHole;
-import com.ananttomar.livingblackhole.client.ClientEffects;
 import com.ananttomar.livingblackhole.client.particle.ParticleFx;
 import com.ananttomar.livingblackhole.item.PocketBlackHoleItem;
-import com.ananttomar.livingblackhole.network.BeamFxPacket;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Camera;
@@ -12,15 +10,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.core.particles.BlockParticleOption;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
@@ -30,7 +23,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-/** Pocket Black Hole beams: a camera-facing core, a soft sheath and a helix of matter. */
+/** Tether beams from the Pocket Black Hole: a camera-facing core, a soft sheath and a helix of matter. */
 public final class BeamEffects {
     private static final ResourceLocation BEAM = LivingBlackHole.id("textures/entity/pocket_beam.png");
     private static final int LIFE = 22;
@@ -45,12 +38,12 @@ public final class BeamEffects {
         final float power;
         int age;
 
-        Beam(BeamFxPacket msg) {
-            this.shooterId = msg.shooterId;
-            this.fallbackStart = msg.start;
-            this.end = msg.end;
-            this.radius = msg.radius;
-            this.power = msg.power;
+        Beam(int shooterId, Vec3 start, Vec3 end, float radius, float power) {
+            this.shooterId = shooterId;
+            this.fallbackStart = start;
+            this.end = end;
+            this.radius = radius;
+            this.power = power;
         }
     }
 
@@ -59,31 +52,15 @@ public final class BeamEffects {
     private BeamEffects() {
     }
 
-    public static void add(BeamFxPacket msg) {
+    /** A tether of light from the shooter's device to {@code end}; also sheds a particle line. */
+    public static void addBeam(int shooterId, Vec3 start, Vec3 end, float radius, float power) {
         Minecraft mc = Minecraft.getInstance();
         ClientLevel level = mc.level;
         if (level == null) {
             return;
         }
-        BEAMS.add(new Beam(msg));
-        RandomSource r = level.random;
-        if (mc.player != null && mc.player.getId() == msg.shooterId) {
-            ClientEffects.addShake(0.25F + msg.power * 0.45F);
-        }
-        ParticleFx.beam(level, msg.start, msg.end, msg.radius, msg.power);
-        int crumbs = 0;
-        for (BeamFxPacket.Absorbed a : msg.absorbed) {
-            Vec3 at = Vec3.atCenterOf(a.pos());
-            ParticleFx.absorb(level, at, msg.shooterId, msg.start, a.stateId() < 0);
-            if (a.stateId() >= 0 && crumbs++ < 160) {
-                BlockState state = Block.stateById(a.stateId());
-                for (int i = 0; i < 2; i++) {
-                    level.addParticle(new BlockParticleOption(ParticleTypes.BLOCK, state),
-                            at.x + (r.nextDouble() - 0.5), at.y + (r.nextDouble() - 0.5), at.z + (r.nextDouble() - 0.5),
-                            0.0, 0.0, 0.0);
-                }
-            }
-        }
+        BEAMS.add(new Beam(shooterId, start, end, radius, power));
+        ParticleFx.beam(level, start, end, radius, power);
     }
 
     public static void tick() {

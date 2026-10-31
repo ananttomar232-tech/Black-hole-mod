@@ -33,8 +33,6 @@ public final class ClientSetup {
         event.enqueueWork(() -> {
             ItemProperties.register(ModItems.POCKET_BLACK_HOLE.get(), LivingBlackHole.id("instability"),
                     (stack, level, entity, seed) -> PocketBlackHoleItem.instability(stack));
-            ItemProperties.register(ModItems.POCKET_BLACK_HOLE.get(), LivingBlackHole.id("charging"),
-                    (stack, level, entity, seed) -> entity != null && entity.isUsingItem() && entity.getUseItem() == stack ? 1.0F : 0.0F);
         });
     }
 

@@ -1,7 +1,7 @@
 package com.ananttomar.livingblackhole.client;
 
-import com.ananttomar.livingblackhole.client.render.BeamEffects;
-import com.ananttomar.livingblackhole.network.BeamFxPacket;
+import com.ananttomar.livingblackhole.client.fx.ChunkEffects;
+import com.ananttomar.livingblackhole.network.ChunkFxPacket;
 import com.ananttomar.livingblackhole.network.CinematicPacket;
 import com.ananttomar.livingblackhole.network.SyncSingularityPacket;
 
@@ -14,8 +14,8 @@ public final class ClientPacketHandler {
         ClientSingularityState.set(msg.events);
     }
 
-    public static void handleBeam(BeamFxPacket msg) {
-        BeamEffects.add(msg);
+    public static void handleChunkFx(ChunkFxPacket msg) {
+        ChunkEffects.play(msg);
     }
 
     public static void handleCinematic(CinematicPacket msg) {

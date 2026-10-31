@@ -23,7 +23,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 /**
- * Three Core Fragments wrapped around a sliver of Compressed Matter, phase-inverted. Thrown, it
+ * Three Core Fragments wrapped around a Compressed Chunk, phase-inverted. Thrown, it
  * coasts on near-zero gravity; inside a singularity's gravity well it is captured and dragged to
  * the event horizon, where it collapses the black hole.
  */

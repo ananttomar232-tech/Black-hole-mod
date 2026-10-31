@@ -41,19 +41,19 @@
       }
     ]
   },
-  "pocket_charge": {
-    "subtitle": "subtitles.livingblackhole.pocket_charge",
+  "vacuum": {
+    "subtitle": "subtitles.livingblackhole.vacuum",
     "sounds": [
       {
-        "name": "livingblackhole:pocket_charge"
+        "name": "livingblackhole:vacuum"
       }
     ]
   },
-  "pocket_fire": {
-    "subtitle": "subtitles.livingblackhole.pocket_fire",
+  "chunk_place": {
+    "subtitle": "subtitles.livingblackhole.chunk_place",
     "sounds": [
       {
-        "name": "livingblackhole:pocket_fire"
+        "name": "livingblackhole:chunk_place"
       }
     ]
   },

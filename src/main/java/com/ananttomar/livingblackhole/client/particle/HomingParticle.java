@@ -26,17 +26,22 @@ public class HomingParticle extends StreakParticle {
     }
 
     private Vec3 target() {
-        Entity e = this.level.getEntity(targetId);
+        fallback = handTarget(this.level, targetId, fallback);
+        return fallback;
+    }
+
+    /** Where swallowed matter should fly: the device in the shooter's hand (first-person aware). */
+    public static Vec3 handTarget(ClientLevel level, int entityId, Vec3 fallback) {
+        Entity e = level.getEntity(entityId);
         if (e instanceof LivingEntity living) {
             Minecraft mc = Minecraft.getInstance();
             if (living == mc.player && mc.options.getCameraType().isFirstPerson()) {
                 Vec3 look = living.getLookAngle();
                 Vec3 right = new Vec3(-look.z, 0.0, look.x);
                 right = right.lengthSqr() < 1.0E-4 ? new Vec3(1.0, 0.0, 0.0) : right.normalize();
-                fallback = living.getEyePosition().add(look.scale(0.55)).add(right.scale(0.28)).add(0.0, -0.26, 0.0);
-            } else {
-                fallback = PocketBlackHoleItem.handPosition(living);
+                return living.getEyePosition().add(look.scale(0.55)).add(right.scale(0.28)).add(0.0, -0.26, 0.0);
             }
+            return PocketBlackHoleItem.handPosition(living);
         }
         return fallback;
     }

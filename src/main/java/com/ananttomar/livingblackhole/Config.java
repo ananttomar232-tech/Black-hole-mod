@@ -7,9 +7,7 @@ public final class Config {
     public static final ForgeConfigSpec CLIENT_SPEC;
 
     // Pocket Black Hole
-    public static final ForgeConfigSpec.IntValue BLOCK_LIMIT;
-    public static final ForgeConfigSpec.IntValue POCKET_RANGE;
-    public static final ForgeConfigSpec.IntValue POCKET_MAX_BLOCKS_PER_SHOT;
+    public static final ForgeConfigSpec.IntValue CHUNK_LIMIT;
     public static final ForgeConfigSpec.IntValue POCKET_COOLDOWN;
 
     // Escaped singularity
@@ -19,6 +17,7 @@ public final class Config {
     public static final ForgeConfigSpec.BooleanValue DESTROY_BLOCKS;
     public static final ForgeConfigSpec.BooleanValue KEEP_CHUNK_LOADED;
     public static final ForgeConfigSpec.BooleanValue PULL_MOBS;
+    public static final ForgeConfigSpec.DoubleValue PLAYER_PULL;
 
     // Quest
     public static final ForgeConfigSpec.IntValue FRAGMENT_RADIUS;
@@ -37,15 +36,11 @@ public final class Config {
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
 
-        b.comment("The Pocket Black Hole - a contained singularity you can aim.").push("pocket_black_hole");
-        BLOCK_LIMIT = b.comment("Blocks the Pocket Black Hole can swallow before its containment fails.")
-                .defineInRange("blockLimit", 500, 1, 1_000_000);
-        POCKET_RANGE = b.comment("Reach of the consumption beam, in blocks.")
-                .defineInRange("beamRange", 15, 4, 64);
-        POCKET_MAX_BLOCKS_PER_SHOT = b.comment("Upper bound of blocks consumed by a single fully charged shot.")
-                .defineInRange("maxBlocksPerShot", 220, 1, 10_000);
-        POCKET_COOLDOWN = b.comment("Cooldown after a shot, in ticks.")
-                .defineInRange("cooldownTicks", 14, 0, 1200);
+        b.comment("The Pocket Black Hole - swallows 16x16x16 chunks of the world into Compressed Chunks.").push("pocket_black_hole");
+        CHUNK_LIMIT = b.comment("Chunks the Pocket Black Hole can swallow before its containment fails.")
+                .defineInRange("chunkLimit", 10, 1, 10_000);
+        POCKET_COOLDOWN = b.comment("Cooldown after consuming or placing a chunk, in ticks.")
+                .defineInRange("cooldownTicks", 20, 0, 1200);
         b.pop();
 
         b.comment("The escaped, living black hole.").push("singularity");
@@ -61,6 +56,8 @@ public final class Config {
                 .define("keepChunkLoaded", true);
         PULL_MOBS = b.comment("Drag and devour mobs, items and other non-player entities.")
                 .define("pullEntities", true);
+        PLAYER_PULL = b.comment("Strength of the gentle drag on players (1.0 = default: walking slowly loses ground near the core, sprinting always escapes; 0 disables).")
+                .defineInRange("playerPull", 1.0, 0.0, 3.0);
         b.pop();
 
         b.comment("The Core Fragment hunt.").push("quest");

@@ -4,10 +4,9 @@ import com.ananttomar.livingblackhole.LivingBlackHole;
 import com.ananttomar.livingblackhole.client.fx.BlackHoleClientFx;
 import com.ananttomar.livingblackhole.client.render.BeamEffects;
 import com.ananttomar.livingblackhole.client.render.LensingEffect;
-import com.ananttomar.livingblackhole.item.PocketBlackHoleItem;
+import com.ananttomar.livingblackhole.client.fx.GravityPull;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
@@ -32,6 +31,7 @@ public final class ClientEvents {
             return;
         }
         ClientEffects.tick(mc);
+        GravityPull.tick(mc);
         BeamEffects.tick();
         if (ClientEffects.ticks() % 100 == 0) {
             BlackHoleClientFx.cleanup();
@@ -66,13 +66,7 @@ public final class ClientEvents {
             return;
         }
         float pt = (float) event.getPartialTick();
-        double fov = event.getFOV() * (1.0 + 0.07 * ClientEffects.proximity(pt));
-        Player player = Minecraft.getInstance().player;
-        if (player != null && player.isUsingItem() && player.getUseItem().getItem() instanceof PocketBlackHoleItem) {
-            float charge = Mth.clamp(player.getTicksUsingItem() / (float) PocketBlackHoleItem.FULL_CHARGE_TICKS, 0.0F, 1.0F);
-            fov *= 1.0 - 0.12 * charge * charge;
-        }
-        event.setFOV(fov);
+        event.setFOV(event.getFOV() * (1.0 + 0.07 * ClientEffects.proximity(pt)));
     }
 
     @SubscribeEvent

@@ -14,8 +14,8 @@ public final class ModSounds {
     public static final RegistryObject<SoundEvent> CONTAINMENT_BREACH = register("containment_breach");
     public static final RegistryObject<SoundEvent> ALARM = register("alarm");
     public static final RegistryObject<SoundEvent> WARNING_BEEP = register("warning_beep");
-    public static final RegistryObject<SoundEvent> POCKET_CHARGE = register("pocket_charge");
-    public static final RegistryObject<SoundEvent> POCKET_FIRE = register("pocket_fire");
+    public static final RegistryObject<SoundEvent> VACUUM = register("vacuum");
+    public static final RegistryObject<SoundEvent> CHUNK_PLACE = register("chunk_place");
     public static final RegistryObject<SoundEvent> COLLAPSE_BUILDUP = register("collapse_buildup");
     public static final RegistryObject<SoundEvent> SINGULARITY_EXPLOSION = register("singularity_explosion");
     public static final RegistryObject<SoundEvent> BOMB_THROW = register("bomb_throw");

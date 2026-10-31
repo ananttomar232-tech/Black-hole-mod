@@ -122,34 +122,48 @@ def pocket_models():
     main["overrides"] = [
         {"predicate": {ns("instability"): 0.5}, "model": ns("item/pocket_black_hole_unstable")},
         {"predicate": {ns("instability"): 0.85}, "model": ns("item/pocket_black_hole_critical")},
-        {"predicate": {ns("charging"): 1}, "model": ns("item/pocket_black_hole_charging")},
     ]
     asset("models/item/pocket_black_hole.json", main)
     asset("models/item/pocket_black_hole_unstable.json", variant("unstable", "unstable", "unstable"))
     asset("models/item/pocket_black_hole_critical.json", variant("critical", "critical", "critical"))
-    asset("models/item/pocket_black_hole_charging.json", variant("charging", "stable", "charging"))
 
 
-def matter_model():
-    c = [8, 8, 8]
-    elements = [
-        box([5, 4.5, 5], [11, 10.5, 11], "#matter", rot=("y", 22.5, c), name="mass_a"),
-        box([6, 6.5, 4], [10, 11.5, 9], "#matter", rot=("x", 45, c), name="mass_b"),
-        box([4, 4, 7.5], [9, 8.5, 12], "#matter", rot=("z", -22.5, c), name="mass_c"),
-        box([7, 3.5, 6], [11.5, 7, 10], "#matter", rot=("x", -22.5, c), name="mass_d"),
-        box([7.25, 9.5, 7.25], [8.75, 12.8, 8.75], "#core", rot=("z", 22.5, c), glow=True, name="shard_a"),
-        box([10.6, 6.2, 7.3], [12.9, 7.6, 8.7], "#core", rot=("y", 22.5, c), glow=True, name="shard_b"),
-        box([3.3, 6.8, 7.6], [5.4, 8.2, 9.0], "#core", rot=("z", -45, c), glow=True, name="shard_c"),
-        box([7.3, 7.2, 10.8], [8.7, 8.6, 12.9], "#core", rot=("x", 22.5, c), glow=True, name="shard_d"),
-    ]
-    asset("models/item/compressed_matter.json", {
+def chunk_model():
+    # A miniature landscape cube (grass top, strata sides) floating in a glowing containment cage.
+    full = {"uv": [0, 0, 16, 16]}
+    terrain = {
+        "from": [4.5, 3.5, 4.5], "to": [11.5, 10.5, 11.5], "name": "terrain",
+        "faces": {"up": dict(full, texture="#top"), "down": dict(full, texture="#bottom"),
+                  "north": dict(full, texture="#side"), "south": dict(full, texture="#side"),
+                  "east": dict(full, texture="#side"), "west": dict(full, texture="#side")},
+    }
+    elements = [terrain,
+                box([6.3, 10.5, 6.3], [7.3, 12.2, 7.3], "#side", name="tree_trunk"),
+                box([5.5, 12.2, 5.5], [8.1, 13.6, 8.1], "#top", name="tree_canopy"),
+                box([8.6, 10.5, 8.4], [10.6, 11.9, 10.4], "#bottom", name="house"),
+                box([8.4, 11.9, 8.2], [10.8, 12.6, 10.6], "#casing", name="house_roof")]
+    lo, hi, t = 2.5, 13.5, 0.7
+    ylo, yhi = 1.5, 12.5
+    k = 0
+    for a in (lo, hi - t):
+        for b in (lo, hi - t):
+            elements.append(box([a, ylo, b], [a + t, yhi, b + t], "#frame", glow=True, name=f"cage_post_{k}"))
+            k += 1
+    for y in (ylo, yhi - t):
+        for b in (lo, hi - t):
+            elements.append(box([lo, y, b], [hi, y + t, b + t], "#frame", glow=True, name=f"cage_bar_x_{k}"))
+            elements.append(box([b, y, lo], [b + t, y + t, hi], "#frame", glow=True, name=f"cage_bar_z_{k}"))
+            k += 1
+    elements.append(box([7.0, 0.5, 7.0], [9.0, 1.5, 9.0], "#core", glow=True, full_uv=True, name="singularity_seed"))
+    asset("models/item/compressed_chunk.json", {
         "gui_light": "side",
         "ambientocclusion": False,
-        "textures": {"matter": ns("item/compressed_matter"), "core": ns("item/compressed_matter_core"),
-                     "particle": ns("item/compressed_matter")},
+        "textures": {"top": ns("item/chunk_top"), "side": ns("item/chunk_side"), "bottom": ns("item/chunk_bottom"),
+                     "frame": ns("item/pocket_ring_stable"), "core": ns("item/pocket_core_stable"),
+                     "casing": ns("item/pocket_casing"), "particle": ns("item/chunk_side")},
         "elements": elements,
-        "display": display(gui_scale=1.05, ground=0.5, fixed=1.0, tp_s=0.55, tp_t=(0, 3, 1),
-                           fp_s=0.6, fp_t=(1.1, 3.4, 1.0)),
+        "display": display(gui_scale=0.95, ground=0.5, fixed=0.9, tp_s=0.5, tp_t=(0, 3, 1),
+                           fp=(0, -35, 0), fp_s=0.5, fp_t=(1.2, 3.4, 1.0)),
     })
 
 
@@ -205,13 +219,6 @@ def core_fragment_model():
     asset("models/item/core_fragment.json", {"parent": ns("block/core_fragment")})
     asset("blockstates/core_fragment.json", {"variants": {"": {"model": ns("block/core_fragment")}}})
 
-    asset("models/block/compressed_matter_block.json", {
-        "parent": "minecraft:block/cube_all",
-        "textures": {"all": ns("block/compressed_matter_block")},
-    })
-    asset("models/item/compressed_matter_block.json", {"parent": ns("block/compressed_matter_block")})
-    asset("blockstates/compressed_matter_block.json", {"variants": {"": {"model": ns("block/compressed_matter_block")}}})
-
 
 # --------------------------------------------------------------------------- particles & sounds
 
@@ -236,8 +243,8 @@ SOUNDS = {
     "containment_breach": ("Containment lattice shatters", False),
     "alarm": ("Breach alarm blares", False),
     "warning_beep": ("Containment warning", False),
-    "pocket_charge": ("Pocket Black Hole charges", False),
-    "pocket_fire": ("Pocket Black Hole devours", False),
+    "vacuum": ("Pocket Black Hole swallows a chunk", False),
+    "chunk_place": ("Compressed Chunk unfolds", False),
     "collapse_buildup": ("Singularity destabilizes", True),
     "singularity_explosion": ("Singularity detonates", True),
     "bomb_throw": ("Anti-Gravity Bomb thrown", False),
@@ -264,31 +271,39 @@ def lang():
     L = {
         "itemGroup.livingblackhole": "Living Black Hole",
         "item.livingblackhole.pocket_black_hole": "Pocket Black Hole",
-        "item.livingblackhole.compressed_matter": "Compressed Matter",
+        "item.livingblackhole.compressed_chunk": "Compressed Chunk",
         "item.livingblackhole.anti_gravity_bomb": "Anti-Gravity Bomb",
         "block.livingblackhole.core_fragment": "Core Fragment",
-        "block.livingblackhole.compressed_matter_block": "Block of Compressed Matter",
         "entity.livingblackhole.black_hole": "Living Black Hole",
         "entity.livingblackhole.gravitational_debris": "Gravitational Debris",
         "entity.livingblackhole.anti_gravity_bomb": "Anti-Gravity Bomb",
 
         "tooltip.livingblackhole.pocket_black_hole.lore": "A captive singularity, humming inside a magnetic lattice.",
-        "tooltip.livingblackhole.pocket_black_hole.mass": "Mass absorbed: %s / %s blocks",
+        "tooltip.livingblackhole.pocket_black_hole.chunks": "Chunks consumed: %s / %s",
         "tooltip.livingblackhole.pocket_black_hole.integrity": "Containment integrity: %s%%",
         "tooltip.livingblackhole.pocket_black_hole.critical": "⚠ CONTAINMENT FAILURE IMMINENT",
-        "tooltip.livingblackhole.pocket_black_hole.usage": "Hold [Use] to charge, release to fire a 15-block consumption beam.",
-        "tooltip.livingblackhole.anti_gravity_bomb.lore": "Three Core Fragments folded around phase-inverted matter.",
+        "tooltip.livingblackhole.pocket_black_hole.usage": "Right-click a block to swallow the 16\u00d716\u00d716 chunk around it.",
+        "tooltip.livingblackhole.anti_gravity_bomb.lore": "Three Core Fragments folded around a phase-inverted Compressed Chunk.",
         "tooltip.livingblackhole.anti_gravity_bomb.usage": "Throw it within 40 blocks of a black hole: gravity does the rest.",
         "tooltip.livingblackhole.anti_gravity_bomb.inert": "Inert outside a gravity well - it drops back intact.",
-        "tooltip.livingblackhole.compressed_matter.lore": "Spacetime folded until it bleeds light.",
-        "tooltip.livingblackhole.compressed_matter.density": "Density ≈ 10¹⁷ kg/m³",
+        "tooltip.livingblackhole.compressed_chunk.lore": "A piece of the world folded into a fist-sized lattice.",
+        "tooltip.livingblackhole.compressed_chunk.empty": "Empty - nothing is folded inside.",
+        "tooltip.livingblackhole.compressed_chunk.blocks": "Contains %s blocks:",
+        "tooltip.livingblackhole.compressed_chunk.origin": "Taken from %s, %s, %s",
+        "tooltip.livingblackhole.compressed_chunk.usage": "Right-click a surface to unfold it. The block you originally clicked lands on the block you click now.",
         "tooltip.livingblackhole.core_fragment.lore": "A shard of the singularity's own lattice.",
-        "tooltip.livingblackhole.core_fragment.usage": "3 Core Fragments + 1 Compressed Matter = Anti-Gravity Bomb",
+        "tooltip.livingblackhole.core_fragment.usage": "3 Core Fragments + 1 Compressed Chunk = Anti-Gravity Bomb",
 
         "message.livingblackhole.breach": "☢ CONTAINMENT BREACH! A black hole has escaped at %s!",
         "message.livingblackhole.fragments": "Core Fragments crashed down at: %s",
         "message.livingblackhole.fragment_secured": "✔ %s secured a Core Fragment (%s/%s)",
-        "message.livingblackhole.all_fragments": "All Core Fragments secured! Craft the Anti-Gravity Bomb: 3 Core Fragments + 1 Compressed Matter.",
+        "message.livingblackhole.all_fragments": "All Core Fragments secured! Craft the Anti-Gravity Bomb: 3 Core Fragments + 1 Compressed Chunk.",
+        "message.livingblackhole.nothing_to_consume": "Nothing here the singularity can swallow.",
+        "message.livingblackhole.aim_at_block": "Aim at a block - the singularity swallows the 16\u00d716\u00d716 chunk around it.",
+        "message.livingblackhole.chunk_consumed": "Swallowed %s blocks - chunk %s / %s",
+        "message.livingblackhole.chunk_placed": "Unfolded %s blocks",
+        "message.livingblackhole.chunk_empty": "This Compressed Chunk is empty.",
+        "message.livingblackhole.chunk_blocked": "Nothing could be placed here.",
         "message.livingblackhole.collapse_started": "The Anti-Gravity Bomb reached the event horizon - the singularity is destabilizing!",
         "message.livingblackhole.neutralized": "✦ %s neutralized the singularity. The world is safe.",
         "message.livingblackhole.unknown_hero": "An unknown hero",
@@ -331,14 +346,14 @@ def lang():
         "command.livingblackhole.cleared": "Removed %s singularities.",
         "command.livingblackhole.not_player": "This command must be run by a player.",
         "command.livingblackhole.not_holding": "Hold a Pocket Black Hole first.",
-        "command.livingblackhole.charged": "Pocket Black Hole charged to %s / %s blocks.",
+        "command.livingblackhole.charged": "Pocket Black Hole charged to %s / %s chunks.",
 
         "advancements.livingblackhole.root.title": "Living Black Hole",
         "advancements.livingblackhole.root.description": "Hold a singularity in the palm of your hand",
-        "advancements.livingblackhole.event_horizon.title": "Event Horizon",
-        "advancements.livingblackhole.event_horizon.description": "Turn the world into Compressed Matter",
+        "advancements.livingblackhole.pocket_dimension.title": "Pocket Dimension",
+        "advancements.livingblackhole.pocket_dimension.description": "Fold a 16\u00d716\u00d716 piece of the world into a Compressed Chunk",
         "advancements.livingblackhole.containment_breach.title": "Containment Breach",
-        "advancements.livingblackhole.containment_breach.description": "Feed the Pocket Black Hole until it breaks free",
+        "advancements.livingblackhole.containment_breach.description": "Feed the Pocket Black Hole ten chunks until it breaks free",
         "advancements.livingblackhole.shards_of_creation.title": "Shards of Creation",
         "advancements.livingblackhole.shards_of_creation.description": "Recover a Core Fragment from its crash site",
         "advancements.livingblackhole.defuser.title": "Phase Inversion",
@@ -367,21 +382,8 @@ def recipes():
         "type": "minecraft:crafting_shapeless",
         "category": "equipment",
         "ingredients": [{"item": ns("core_fragment")}, {"item": ns("core_fragment")},
-                        {"item": ns("core_fragment")}, {"item": ns("compressed_matter")}],
+                        {"item": ns("core_fragment")}, {"item": ns("compressed_chunk")}],
         "result": {"item": ns("anti_gravity_bomb")},
-    })
-    data(MOD, "recipes/compressed_matter_block.json", {
-        "type": "minecraft:crafting_shaped",
-        "category": "building",
-        "pattern": ["MMM", "MMM", "MMM"],
-        "key": {"M": {"item": ns("compressed_matter")}},
-        "result": {"item": ns("compressed_matter_block")},
-    })
-    data(MOD, "recipes/compressed_matter_from_block.json", {
-        "type": "minecraft:crafting_shapeless",
-        "category": "misc",
-        "ingredients": [{"item": ns("compressed_matter_block")}],
-        "result": {"item": ns("compressed_matter"), "count": 9},
     })
 
 
@@ -394,12 +396,10 @@ def self_drop(block, explosion=True):
 
 def loot():
     data(MOD, "loot_tables/blocks/core_fragment.json", self_drop("core_fragment", explosion=False))
-    data(MOD, "loot_tables/blocks/compressed_matter_block.json", self_drop("compressed_matter_block"))
 
 
 def tags():
-    data("minecraft", "tags/blocks/mineable/pickaxe.json", {"replace": False, "values": [ns("core_fragment"), ns("compressed_matter_block")]})
-    data("minecraft", "tags/blocks/needs_iron_tool.json", {"replace": False, "values": [ns("compressed_matter_block")]})
+    data("minecraft", "tags/blocks/mineable/pickaxe.json", {"replace": False, "values": [ns("core_fragment")]})
     data(MOD, "tags/blocks/singularity_immune.json", {"replace": False, "values": [
         ns("core_fragment"), "minecraft:bedrock", "minecraft:barrier", "minecraft:light", "minecraft:structure_void",
         "minecraft:end_portal", "minecraft:end_portal_frame", "minecraft:end_gateway", "minecraft:command_block",
@@ -447,8 +447,8 @@ IMPOSSIBLE = {"triggered": {"trigger": "minecraft:impossible"}}
 def advancements():
     advancement("root", None, ns("pocket_black_hole"), {"has_pocket": has(ns("pocket_black_hole"))},
                 background=f"{MOD}:textures/gui/advancements/backgrounds/void.png", chat=False)
-    advancement("event_horizon", ns("root"), ns("compressed_matter"), {"has_matter": has(ns("compressed_matter"))})
-    advancement("containment_breach", ns("event_horizon"), "minecraft:tnt", IMPOSSIBLE, frame="goal")
+    advancement("pocket_dimension", ns("root"), ns("compressed_chunk"), {"has_chunk": has(ns("compressed_chunk"))})
+    advancement("containment_breach", ns("pocket_dimension"), "minecraft:tnt", IMPOSSIBLE, frame="goal")
     advancement("shards_of_creation", ns("containment_breach"), ns("core_fragment"), {"has_fragment": has(ns("core_fragment"))})
     advancement("defuser", ns("shards_of_creation"), ns("anti_gravity_bomb"), {"has_bomb": has(ns("anti_gravity_bomb"))}, frame="goal")
     advancement("cosmic_savior", ns("defuser"), "minecraft:nether_star", IMPOSSIBLE, frame="challenge",
@@ -464,13 +464,11 @@ def advancements():
 
     recipe_unlock("pocket_black_hole", ns("pocket_black_hole"), "minecraft:ender_eye")
     recipe_unlock("anti_gravity_bomb", ns("anti_gravity_bomb"), ns("core_fragment"))
-    recipe_unlock("compressed_matter_block", ns("compressed_matter_block"), ns("compressed_matter"))
-    recipe_unlock("compressed_matter_from_block", ns("compressed_matter"), ns("compressed_matter_block"))
 
 
 def main():
     pocket_models()
-    matter_model()
+    chunk_model()
     bomb_model()
     core_fragment_model()
     particles()

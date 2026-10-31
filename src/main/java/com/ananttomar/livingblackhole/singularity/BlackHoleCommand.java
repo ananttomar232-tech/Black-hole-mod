@@ -28,7 +28,7 @@ import java.util.List;
  *     <li>{@code spawn [pos]} - start a full escape event (fragments included)</li>
  *     <li>{@code neutralize} - collapse the nearest black hole with the full cinematic</li>
  *     <li>{@code clear} - instantly remove all black holes and clear the HUD</li>
- *     <li>{@code charge <blocks>} - set the mass stored in the held Pocket Black Hole</li>
+ *     <li>{@code charge <chunks>} - set how many chunks the held Pocket Black Hole has swallowed</li>
  * </ul>
  */
 public final class BlackHoleCommand {
@@ -46,8 +46,8 @@ public final class BlackHoleCommand {
                 .then(Commands.literal("neutralize").executes(BlackHoleCommand::neutralize))
                 .then(Commands.literal("clear").executes(BlackHoleCommand::clear))
                 .then(Commands.literal("charge")
-                        .then(Commands.argument("blocks", IntegerArgumentType.integer(0, 1_000_000))
-                                .executes(ctx -> charge(ctx, IntegerArgumentType.getInteger(ctx, "blocks"))))));
+                        .then(Commands.argument("chunks", IntegerArgumentType.integer(0, 10_000))
+                                .executes(ctx -> charge(ctx, IntegerArgumentType.getInteger(ctx, "chunks"))))));
     }
 
     private static int list(CommandContext<CommandSourceStack> ctx) {
@@ -102,7 +102,7 @@ public final class BlackHoleCommand {
         return n;
     }
 
-    private static int charge(CommandContext<CommandSourceStack> ctx, int blocks) {
+    private static int charge(CommandContext<CommandSourceStack> ctx, int chunks) {
         CommandSourceStack source = ctx.getSource();
         if (!(source.getEntity() instanceof Player player)) {
             source.sendFailure(Component.translatable("command.livingblackhole.not_player"));
@@ -116,7 +116,7 @@ public final class BlackHoleCommand {
             source.sendFailure(Component.translatable("command.livingblackhole.not_holding"));
             return 0;
         }
-        int clamped = Math.min(blocks, Math.max(0, PocketBlackHoleItem.limit() - 1));
+        int clamped = Math.min(chunks, Math.max(0, PocketBlackHoleItem.limit() - 1));
         PocketBlackHoleItem.setConsumed(stack, clamped);
         stack.getOrCreateTag().remove(PocketBlackHoleItem.TAG_WARNED);
         source.sendSuccess(() -> Component.translatable("command.livingblackhole.charged", clamped, PocketBlackHoleItem.limit()).withStyle(ChatFormatting.LIGHT_PURPLE), true);

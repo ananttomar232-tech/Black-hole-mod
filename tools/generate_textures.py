@@ -253,7 +253,6 @@ RING_PALETTES = {
     "stable": [(0.0, (0.02, 0.05, 0.12)), (0.45, (0.05, 0.4, 0.75)), (0.75, (0.45, 0.35, 1.0)), (1.0, (0.92, 0.98, 1.0))],
     "unstable": [(0.0, (0.1, 0.03, 0.02)), (0.45, (0.65, 0.25, 0.05)), (0.75, (1.0, 0.55, 0.15)), (1.0, (1.0, 0.95, 0.8))],
     "critical": [(0.0, (0.12, 0.0, 0.0)), (0.45, (0.8, 0.05, 0.02)), (0.75, (1.0, 0.35, 0.2)), (1.0, (1.0, 1.0, 1.0))],
-    "charging": [(0.0, (0.08, 0.02, 0.15)), (0.45, (0.5, 0.2, 1.0)), (0.75, (0.9, 0.55, 1.0)), (1.0, (1.0, 1.0, 1.0))],
 }
 
 
@@ -436,6 +435,71 @@ def compressed_block():
         col *= (0.55 + 0.45 * bevel)[..., None]
         out_frames.append(rgba(col))
     save_rgba(animate(out_frames), "block/compressed_matter_block.png", ANIM)
+
+
+def chunk_textures():
+    """The Compressed Chunk: a miniature 16x16x16 world - meadow with trees and a cabin on top,
+    geological strata with ores down the sides, and a singularity seam glowing underneath."""
+    s = 128
+    u, v = grid(s, s)
+    rng = np.random.default_rng(501)
+    px = 8  # one "miniature block" = 8 px, so the faces read as 16x16 voxels
+    bu = np.floor(u * 16) / 16
+    bv = np.floor(v * 16) / 16
+    cell = spectral(16, 16, 1.5, 502)
+    cell_px = cell[np.clip((bv * 16).astype(int), 0, 15), np.clip((bu * 16).astype(int), 0, 15)]
+    grain = spectral(s, s, 1.0, 503)
+
+    # ---- top: grass meadow, a path, two tree canopies and a cabin roof
+    g = 0.35 + 0.25 * cell_px + 0.12 * grain
+    top = np.stack([g * 0.42, g * 0.78, g * 0.28], -1)
+    path = (np.abs(bv - 0.5 - 0.15 * np.sin(bu * 6.0)) < 0.07)
+    top[path] = np.stack([0.55 + 0.1 * grain, 0.45 + 0.08 * grain, 0.28 + 0.05 * grain], -1)[path]
+    for cx, cy, r in [(0.2, 0.22, 0.13), (0.78, 0.78, 0.15), (0.3, 0.8, 0.1)]:
+        d = np.sqrt((bu + 1 / 32 - cx) ** 2 + (bv + 1 / 32 - cy) ** 2)
+        leaf = d < r
+        shade = 0.2 + 0.22 * cell_px + 0.1 * (d < r * 0.5)
+        top[leaf] = np.stack([shade * 0.3, shade * 0.62, shade * 0.22], -1)[leaf]
+    roof = (bu >= 0.56) & (bu < 0.81) & (bv >= 0.12) & (bv < 0.37)
+    stripe = (np.floor(u * 32) % 2 == 0)
+    roofc = np.where(stripe[..., None], np.array([0.55, 0.22, 0.16]), np.array([0.45, 0.17, 0.12]))
+    top[roof] = roofc[roof]
+    edge = (np.minimum(u * s % px, v * s % px) < 1).astype(float)
+    top *= (1 - 0.18 * edge)[..., None]
+    save_rgba(rgba(top), "item/chunk_top.png")
+
+    # ---- side: grass lip, dirt, stone strata, ores, deepslate, glowing seam at the bottom
+    side = np.zeros((s, s, 3))
+    layer = bv
+    dirt = np.stack([0.45, 0.31, 0.2], -1) * (0.75 + 0.35 * cell_px[..., None])
+    stone = np.stack([0.5, 0.5, 0.52], -1) * (0.7 + 0.35 * cell_px[..., None])
+    deep = np.stack([0.26, 0.25, 0.3], -1) * (0.7 + 0.35 * cell_px[..., None])
+    grass = np.stack([0.32, 0.62, 0.22], -1) * (0.8 + 0.3 * cell_px[..., None])
+    side = np.where((layer < 1 / 16)[..., None], grass, side)
+    side = np.where(((layer >= 1 / 16) & (layer < 5 / 16))[..., None], dirt, side)
+    side = np.where(((layer >= 5 / 16) & (layer < 12 / 16))[..., None], stone, side)
+    side = np.where((layer >= 12 / 16)[..., None], deep, side)
+    # Grass drips over the first dirt row.
+    drip = (layer >= 1 / 16) & (layer < 2 / 16) & (cell_px > 0.55)
+    side[drip] = grass[drip]
+    ores = [((0.25, 0.9, 0.85), 0.94, 504), ((0.95, 0.8, 0.25), 0.95, 505), ((0.85, 0.3, 0.25), 0.95, 506)]
+    for color, thr, seed in ores:
+        o = spectral(16, 16, 0.5, seed)
+        ore_px = o[np.clip((bv * 16).astype(int), 0, 15), np.clip((bu * 16).astype(int), 0, 15)]
+        speck = (ore_px > thr) & (layer >= 5 / 16) & ((grain > 0.55) | (np.floor(u * 64 + v * 64) % 3 == 0))
+        side[speck] = np.array(color)
+    seam = np.exp(-((v - 0.985) / 0.02) ** 2)
+    side += seam[..., None] * np.array([0.6, 0.25, 1.0])
+    side *= (1 - 0.16 * edge)[..., None]
+    save_rgba(rgba(side), "item/chunk_side.png")
+
+    # ---- bottom: deepslate cut by the singularity, cracks glowing violet
+    f1, f2, cid, rnd = voronoi(s, s, 20, 507)
+    base = 0.18 + 0.1 * rnd[cid] + 0.06 * grain
+    bottom = np.stack([base * 0.95, base * 0.9, base * 1.1], -1)
+    crack = smoothstep(0.012, 0.0, f2 - f1)
+    bottom += (blur(crack, 2.0) * 1.2 + crack)[..., None] * np.array([0.65, 0.3, 1.0])
+    save_rgba(rgba(bottom), "item/chunk_bottom.png")
 
 
 # --------------------------------------------------------------------------- particles
@@ -764,14 +828,12 @@ def main():
         pocket_core(state)
     for i, (state, palette) in enumerate(RING_PALETTES.items()):
         energy_band(f"item/pocket_ring_{state}.png", palette, 200 + i)
-    compressed_matter()
-    compressed_matter_core()
+    chunk_textures()
     bomb_shell()
     energy_band("item/bomb_band.png", [(0.0, (0.0, 0.08, 0.12)), (0.45, (0.0, 0.55, 0.75)), (0.75, (0.3, 0.95, 1.0)), (1.0, (0.92, 1.0, 1.0))], 251, rims=False)
     bomb_metal()
     core_crystal()
     core_base()
-    compressed_block()
     particle_set()
     disk()
     halo()

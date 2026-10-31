@@ -54,7 +54,7 @@ import java.util.UUID;
 
 /**
  * The escaped singularity. It never moves; it grows, devours every block within its gravitational
- * reach, drags non-player entities across the event horizon and, when an Anti-Gravity Bomb reaches
+ * reach, drags every entity - players included, see GravityPull - toward the event horizon and, when an Anti-Gravity Bomb reaches
  * its centre, runs a scripted destabilise -> implode -> detonate -> shockwave sequence.
  *
  * <p>The entity position is the exact centre of the event horizon.</p>
@@ -405,7 +405,7 @@ public class BlackHoleEntity extends Entity {
             }
         }
 
-        // Players are never dragged - but flying into the horizon itself is fatal.
+        // Players are dragged client-side (see GravityPull) so their movement stays smooth; the horizon itself is fatal.
         DamageSource source = ModDamageTypes.singularity(level);
         for (ServerPlayer player : level.players()) {
             if (player.isCreative() || player.isSpectator()) {

@@ -8,7 +8,15 @@ import com.ananttomar.livingblackhole.item.PocketBlackHoleItem;
 import com.ananttomar.livingblackhole.registry.ModBlocks;
 import com.ananttomar.livingblackhole.registry.ModEntities;
 import com.ananttomar.livingblackhole.registry.ModItems;
-import com.ananttomar.livingblackhole.singularity.PocketBeamLogic;
+import com.ananttomar.livingblackhole.item.CompressedChunkItem;
+import com.ananttomar.livingblackhole.singularity.ChunkCapture;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.TransientCraftingContainer;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import com.ananttomar.livingblackhole.singularity.SingularityEvent;
 import com.ananttomar.livingblackhole.singularity.SingularityManager;
 import com.ananttomar.livingblackhole.singularity.SingularitySavedData;
@@ -39,9 +47,9 @@ import java.util.UUID;
 
 /**
  * Headless end-to-end test of the whole singularity event on a dedicated server, enabled only
- * with {@code -Dlivingblackhole.selftest=true} (CI). A fake player fires an almost-full Pocket
- * Black Hole, then the test verifies the breach, devouring, debris, fragment collection, bomb
- * capture and the collapse, writes {@code selftest-server.txt} and stops the server.
+ * with {@code -Dlivingblackhole.selftest=true} (CI). A fake player swallows ten chunks (round-tripping
+ * one with a chest through NBT), then the test verifies the breach, the recipe, devouring, debris,
+ * fragment collection, bomb capture and the collapse, writes {@code selftest-server.txt} and stops the server.
  */
 @Mod.EventBusSubscriber(modid = LivingBlackHole.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class ServerSelfTest {
@@ -89,33 +97,93 @@ public final class ServerSelfTest {
     private static void step(ServerLevel level) {
         if (tick == 20) {
             BlockPos spawn = level.getSharedSpawnPos();
-            int x = spawn.getX() + 48;
-            int z = spawn.getZ() + 8;
-            int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
             fake = FakePlayerFactory.get(level, new GameProfile(UUID.fromString("8d6f1d4e-55c4-4f6e-9b3a-1f0a5c2e7b11"), "[LBH-SelfTest]"));
-            fake.moveTo(x + 0.5, y, z + 0.5, 0.0F, 55.0F);
             ItemStack pocket = new ItemStack(ModItems.POCKET_BLACK_HOLE.get());
-            PocketBlackHoleItem.setConsumed(pocket, PocketBlackHoleItem.limit() - 12);
             fake.setItemInHand(InteractionHand.MAIN_HAND, pocket);
-            log("firing near-critical Pocket Black Hole at " + fake.blockPosition());
-            PocketBeamLogic.fire(level, fake, pocket, InteractionHand.MAIN_HAND, 1.0F);
 
-            check(fake.getMainHandItem().isEmpty(), "pocket black hole deleted from inventory after breach");
-            check(fake.getInventory().countItem(ModItems.COMPRESSED_MATTER.get()) > 0, "compressed matter delivered to the inventory");
+            // ---- Chunk 1: a chest full of diamonds rides along inside the NBT.
+            BlockPos target = surface(level, spawn.getX() + 64, spawn.getZ() + 8);
+            BlockPos chestPos = target.above();
+            level.setBlock(chestPos, Blocks.CHEST.defaultBlockState(), 3);
+            if (level.getBlockEntity(chestPos) instanceof ChestBlockEntity chest) {
+                chest.setItem(0, new ItemStack(Items.DIAMOND, 7));
+            }
+            int before = solidCount(level, ChunkCapture.regionMin(target));
+            fake.moveTo(target.getX() + 0.5, target.getY() + 1, target.getZ() + 0.5, 0.0F, 60.0F);
+            boolean ok = PocketBlackHoleItem.consume(level, fake, pocket, InteractionHand.MAIN_HAND, target);
+            int after = solidCount(level, ChunkCapture.regionMin(target));
+            ItemStack chunk = findChunk(fake);
+            check(ok && !chunk.isEmpty(), "right-click on a block produced a Compressed Chunk");
+            int stored = ChunkCapture.hasStructure(chunk) ? ChunkCapture.data(chunk).getInt("Count") : 0;
+            check(stored > 500 && stored == before - after, "16x16x16 region lifted into NBT (" + stored + " blocks, " + after + " left behind)");
+            check(level.getBlockState(chestPos).isAir(), "captured blocks removed from the world");
+            check(level.getEntitiesOfClass(ItemEntity.class, new AABB(target).inflate(12.0)).isEmpty(), "nothing dropped while capturing (chest contents kept in NBT)");
+            check(PocketBlackHoleItem.getConsumed(pocket) == 1, "pocket counts consumed chunks (1)");
+
+            // ---- Paste it 40 blocks away and check the chest and its diamonds came with it.
+            BlockPos anchor = surface(level, spawn.getX() + 64, spawn.getZ() + 48);
+            fake.getCooldowns().removeCooldown(ModItems.COMPRESSED_CHUNK.get());
+            boolean placed = CompressedChunkItem.place(level, fake, chunk, anchor);
+            int pasted = solidCount(level, ChunkCapture.regionMin(anchor));
+            check(placed && chunk.isEmpty(), "compressed chunk placed and consumed");
+            check(pasted >= stored, "structure pasted back (" + pasted + " solid blocks in the region)");
+            boolean diamonds = level.getBlockEntity(anchor.above()) instanceof ChestBlockEntity c2 && c2.getItem(0).is(Items.DIAMOND) && c2.getItem(0).getCount() == 7;
+            check(diamonds, "chest and its 7 diamonds restored from NBT");
+
+            // ---- Chunks 2..10: the tenth breaks containment.
+            for (int i = 1; i < PocketBlackHoleItem.limit(); i++) {
+                BlockPos t = surface(level, spawn.getX() + 64 + i * 36, spawn.getZ() - 40);
+                fake.moveTo(t.getX() + 0.5, t.getY() + 1, t.getZ() + 0.5, 0.0F, 60.0F);
+                fake.getCooldowns().removeCooldown(ModItems.POCKET_BLACK_HOLE.get());
+                PocketBlackHoleItem.consume(level, fake, pocket, InteractionHand.MAIN_HAND, t);
+                if (i == PocketBlackHoleItem.limit() - 2) {
+                    check(SingularitySavedData.get(server).isEmpty(), "no breach before the limit (" + (i + 1) + " chunks)");
+                }
+            }
+            log("consumed " + PocketBlackHoleItem.limit() + " chunks");
+
+            check(fake.getMainHandItem().isEmpty(), "pocket black hole deleted from inventory after the 10th chunk");
             List<SingularityEvent> events = SingularitySavedData.get(server).snapshot();
             check(events.size() == 1, "exactly one singularity event registered (found " + events.size() + ")");
             if (!events.isEmpty()) {
                 SingularityEvent ev = events.get(0);
                 blackHoleId = ev.blackHoleId;
                 center = ev.center;
+                check(center.distanceTo(fake.position()) < 3.0, "black hole spawned at the player's location");
                 for (int i = 0; i < SingularityEvent.FRAGMENTS; i++) {
                     BlockPos f = ev.fragments[i];
                     double dist = Math.sqrt(f.distToCenterSqr(center.x, f.getY() + 0.5, center.z));
                     check(level.getBlockState(f).is(ModBlocks.CORE_FRAGMENT.get()), "core fragment " + i + " placed at " + f.toShortString());
                     check(dist <= 302 && dist >= 40, "core fragment " + i + " within 300 blocks (" + Math.round(dist) + ")");
                 }
-                check(level.getEntity(blackHoleId) instanceof BlackHoleEntity, "black hole entity spawned at the player's position");
+                check(level.getEntity(blackHoleId) instanceof BlackHoleEntity, "black hole entity exists");
             }
+
+            // ---- The exact recipe: 3 Core Fragments + 1 Compressed Chunk = Anti-Gravity Bomb.
+            ItemStack bombChunk = findChunk(fake);
+            check(!bombChunk.isEmpty(), "player still holds compressed chunks for the recipe");
+            AbstractContainerMenu dummy = new AbstractContainerMenu(null, -1) {
+                @Override
+                public ItemStack quickMoveStack(Player player, int index) {
+                    return ItemStack.EMPTY;
+                }
+
+                @Override
+                public boolean stillValid(Player player) {
+                    return true;
+                }
+            };
+            TransientCraftingContainer grid = new TransientCraftingContainer(dummy, 3, 3);
+            grid.setItem(0, new ItemStack(ModItems.CORE_FRAGMENT.get()));
+            grid.setItem(4, new ItemStack(ModItems.CORE_FRAGMENT.get()));
+            grid.setItem(8, new ItemStack(ModItems.CORE_FRAGMENT.get()));
+            grid.setItem(5, bombChunk.copy());
+            ItemStack result = server.getRecipeManager().getRecipeFor(RecipeType.CRAFTING, grid, level)
+                    .map(r -> r.assemble(grid, level.registryAccess())).orElse(ItemStack.EMPTY);
+            check(result.is(ModItems.ANTI_GRAVITY_BOMB.get()), "crafting 3 Core Fragments + 1 Compressed Chunk yields the Anti-Gravity Bomb");
+            grid.setItem(5, ItemStack.EMPTY);
+            boolean incomplete = server.getRecipeManager().getRecipeFor(RecipeType.CRAFTING, grid, level).isPresent();
+            check(!incomplete, "recipe needs the Compressed Chunk (3 fragments alone craft nothing)");
         }
 
         if (tick > 20 && tick < 320 && center != null) {
@@ -173,6 +241,35 @@ public final class ServerSelfTest {
             check(false, "self-test timed out");
             finish();
         }
+    }
+
+    private static BlockPos surface(ServerLevel level, int x, int z) {
+        return new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) - 1, z);
+    }
+
+    private static int solidCount(ServerLevel level, BlockPos min) {
+        int n = 0;
+        BlockPos.MutableBlockPos c = new BlockPos.MutableBlockPos();
+        for (int x = 0; x < 16; x++) {
+            for (int y = 0; y < 16; y++) {
+                for (int z = 0; z < 16; z++) {
+                    if (!level.getBlockState(c.set(min.getX() + x, min.getY() + y, min.getZ() + z)).isAir()) {
+                        n++;
+                    }
+                }
+            }
+        }
+        return n;
+    }
+
+    private static ItemStack findChunk(Player player) {
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            ItemStack s = player.getInventory().getItem(i);
+            if (s.is(ModItems.COMPRESSED_CHUNK.get())) {
+                return s;
+            }
+        }
+        return ItemStack.EMPTY;
     }
 
     private static void check(boolean ok, String what) {

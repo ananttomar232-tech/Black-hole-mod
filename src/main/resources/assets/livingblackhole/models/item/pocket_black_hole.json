@@ -18,12 +18,6 @@
         "livingblackhole:instability": 0.85
       },
       "model": "livingblackhole:item/pocket_black_hole_critical"
-    },
-    {
-      "predicate": {
-        "livingblackhole:charging": 1
-      },
-      "model": "livingblackhole:item/pocket_black_hole_charging"
     }
   ]
 }
