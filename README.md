@@ -13,13 +13,15 @@ Captured automatically by the CI client self-test (software rendering, default s
 
 | | |
 |---|---|
-| ![Pocket beam](docs/screenshots/00-pocket-beam.jpg) | ![Living black hole](docs/screenshots/01-living-black-hole.jpg) |
-| *The Pocket Black Hole's consumption beam* | *The escaped singularity devouring the hills, HUD tracking the three fragments* |
-| ![Core Fragment crash site](docs/screenshots/02-core-fragment.jpg) | ![Gravity lock](docs/screenshots/03-gravity-lock.jpg) |
-| *A Core Fragment crash site with its sky beam* | *Gravity lock: the Anti-Gravity Bomb falls into the horizon* |
-| ![Destabilizing](docs/screenshots/04-destabilizing.jpg) | ![Detonation](docs/screenshots/05-detonation.jpg) |
-| *Destabilisation: white-hot disk, countdown to detonation* | *Implosion and detonation flare* |
-| ![Shockwave](docs/screenshots/06-shockwave.jpg) | |
+| ![Chunk vortex](docs/screenshots/00-chunk-vortex.jpg) | ![Chunk hole](docs/screenshots/01-chunk-hole.jpg) |
+| *A 16×16×16 chunk spirals into the Pocket Black Hole* | *The perfect cube it leaves behind* |
+| ![Floating chunk](docs/screenshots/02-floating-chunk.jpg) | ![Living black hole](docs/screenshots/03-living-black-hole.jpg) |
+| *The Compressed Chunk unfolded again as a floating island above its own hole* | *Breach: the living black hole devours the hills, its lensing bending the world behind it* |
+| ![Gravity pull](docs/screenshots/04-gravity-pull.jpg) | ![Core Fragment crash site](docs/screenshots/05-core-fragment.jpg) |
+| *Sprinting away against the pull* | *A Core Fragment crash site with its sky beam* |
+| ![Destabilizing](docs/screenshots/06-destabilizing.jpg) | ![Detonation](docs/screenshots/07-detonation.jpg) |
+| *The bomb reaches the horizon: destabilisation and countdown* | *Detonation flash* |
+| ![Shockwave](docs/screenshots/08-shockwave.jpg) | |
 | *The shockwave: singularity neutralized* | |
 
 ![Models](docs/models.png)
