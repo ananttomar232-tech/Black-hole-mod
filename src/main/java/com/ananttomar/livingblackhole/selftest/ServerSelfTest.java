@@ -10,6 +10,7 @@ import com.ananttomar.livingblackhole.registry.ModEntities;
 import com.ananttomar.livingblackhole.registry.ModItems;
 import com.ananttomar.livingblackhole.item.CompressedChunkItem;
 import com.ananttomar.livingblackhole.singularity.ChunkCapture;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -206,6 +207,18 @@ public final class ServerSelfTest {
             level.setBlock(frag, Blocks.AIR.defaultBlockState(), 3);
             SingularityManager.onFragmentBroken(level, frag, fake);
             check(SingularitySavedData.get(server).snapshot().get(0).collected[0], "mining a core fragment marks it collected");
+        }
+
+        if (tick == 330 && center != null) {
+            // The test's fake player does not load chunks. A real thrower keeps the area around them
+            // entity-ticking through their simulation distance; stand in for that here.
+            int cx = Mth.floor(center.x) >> 4;
+            int cz = Mth.floor(center.z) >> 4;
+            for (int dx = -3; dx <= 3; dx++) {
+                for (int dz = -3; dz <= 3; dz++) {
+                    level.setChunkForced(cx + dx, cz + dz, true);
+                }
+            }
         }
 
         if (tick == 340 && center != null) {

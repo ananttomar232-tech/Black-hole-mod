@@ -19,6 +19,9 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 import org.lwjgl.opengl.GL11;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
  * Screen-space gravitational lensing. The nearest black hole is projected to the screen and the
  * frame is re-sampled through a deflection field (Einstein ring magnification, frame-dragging
@@ -38,7 +41,7 @@ public final class LensingEffect {
     private static int width = -1;
     private static int height = -1;
     private static int framesApplied;
-    private static String lastSkip = "never invoked";
+    private static final Map<String, Integer> SKIPS = new LinkedHashMap<>();
 
     private LensingEffect() {
     }
@@ -48,9 +51,9 @@ public final class LensingEffect {
         return lensPass != null && !failed;
     }
 
-    /** Frames the lensing pass actually ran, and why the latest frame was skipped (for diagnostics). */
+    /** Frames the lensing pass actually ran, and how often each early exit was taken (for diagnostics). */
     public static String diagnostics() {
-        return "frames=" + framesApplied + ", lastSkip=" + lastSkip + ", failed=" + failed;
+        return "frames=" + framesApplied + ", skipped=" + SKIPS + ", failed=" + failed;
     }
 
     public static void reset() {
@@ -111,18 +114,18 @@ public final class LensingEffect {
      */
     public static void apply(Matrix4f view, Matrix4f projection, Camera camera, float partialTick) {
         if (!Config.LENSING.get()) {
-            lastSkip = "disabled in config";
+            skip("disabled in config");
             return;
         }
         BlackHoleEntity bh = ClientEffects.nearest();
         if (bh == null || bh.isRemoved()) {
-            lastSkip = "no black hole";
+            skip("no black hole");
             return;
         }
         float scale = bh.getVisualScale(partialTick);
         float master = (float) (double) Config.LENSING_STRENGTH.get() * Mth.clamp(scale, 0.0F, 1.2F);
         if (master <= 0.01F) {
-            lastSkip = "zero strength";
+            skip("zero strength");
             return;
         }
 
@@ -131,26 +134,26 @@ public final class LensingEffect {
         float horizon = bh.getHorizonRadius() * scale;
         Vector4f clip = project(view, projection, c.subtract(cam));
         if (clip.w <= 0.05F) {
-            lastSkip = "behind camera";
+            skip("behind camera");
             return;
         }
         float ndcX = clip.x / clip.w;
         float ndcY = clip.y / clip.w;
         float ndcZ = clip.z / clip.w;
         if (Math.abs(ndcX) > 2.2F || Math.abs(ndcY) > 2.2F) {
-            lastSkip = "off screen";
+            skip("off screen");
             return;
         }
         // Apparent horizon radius in UV-height units, from a point offset along the camera's up axis.
         Vector3f up = camera.getUpVector();
         Vector4f edge = project(view, projection, c.subtract(cam).add(up.x() * horizon, up.y() * horizon, up.z() * horizon));
         if (edge.w <= 0.05F) {
-            lastSkip = "horizon edge behind camera";
+            skip("horizon edge behind camera");
             return;
         }
         float radiusUv = Math.abs(edge.y / edge.w - ndcY) * 0.5F;
         if (radiusUv < 1.0E-4F) {
-            lastSkip = "horizon too small on screen";
+            skip("horizon too small on screen");
             return;
         }
         float edgeFade = Mth.clamp(2.2F - Math.max(Math.abs(ndcX), Math.abs(ndcY)), 0.0F, 1.0F);
@@ -158,7 +161,7 @@ public final class LensingEffect {
 
         Minecraft mc = Minecraft.getInstance();
         if (!ensure(mc) || lensPass == null || blitPass == null) {
-            lastSkip = "shader unavailable";
+            skip("shader unavailable");
             return;
         }
         RenderTarget main = mc.getMainRenderTarget();
@@ -179,6 +182,10 @@ public final class LensingEffect {
         RenderSystem.enableDepthTest();
         RenderSystem.depthMask(true);
         RenderSystem.defaultBlendFunc();
+    }
+
+    private static void skip(String reason) {
+        SKIPS.merge(reason, 1, Integer::sum);
     }
 
     private static Vector4f project(Matrix4f view, Matrix4f projection, Vec3 rel) {

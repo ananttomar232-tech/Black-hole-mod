@@ -86,6 +86,7 @@ public final class ClientSelfTest {
     private static int stateSeenAt;
     private static boolean sawHudEvent;
     private static boolean sawLensing;
+    private static int blackHoleFrames;
 
     private ClientSelfTest() {
     }
@@ -108,6 +109,7 @@ public final class ClientSelfTest {
     @SubscribeEvent
     public static void onRenderStage(RenderLevelStageEvent event) {
         if (ServerSelfTest.ENABLED && event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL && ClientEffects.nearest() != null) {
+            blackHoleFrames++;
             sawLensing |= LensingEffect.isReady();
         }
     }
@@ -379,7 +381,7 @@ public final class ClientSelfTest {
                 if (t == 30) {
                     shot(mc, "20_neutralized");
                     check(ClientSingularityState.events().isEmpty(), "HUD cleared after the black hole was destroyed");
-                    check(sawLensing, "gravitational lensing shader compiled and ran (" + LensingEffect.diagnostics() + ")");
+                    check(sawLensing, "gravitational lensing shader compiled and ran (" + LensingEffect.diagnostics() + ", black hole frames=" + blackHoleFrames + ")");
                     check(shots >= 19, "captured " + shots + " cinematic screenshots");
                 }
                 if (t >= 60 && PENDING_SHOTS.isEmpty()) {
