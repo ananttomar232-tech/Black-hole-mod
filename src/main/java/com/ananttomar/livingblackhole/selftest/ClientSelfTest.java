@@ -181,7 +181,7 @@ public final class ClientSelfTest {
                         check(findChunk(p) >= 0, "Compressed Chunk delivered to the inventory");
                     });
                 }
-                if (t == 164) {
+                if (t == 168) {
                     shot(mc, "01_vortex");
                 }
                 if (t == 176) {
@@ -190,6 +190,13 @@ public final class ClientSelfTest {
                 }
                 if (t == 215) {
                     shot(mc, "03_chunk_hole");
+                }
+                if (t == 216) {
+                    // Pull back so the hole and the island about to hover over it share the frame.
+                    Vec3 hole = Vec3.atCenterOf(target);
+                    lookAt(hole.add(-36.0, 16.0, 14.0), hole.add(0.0, 9.0, 0.0));
+                }
+                if (t == 224) {
                     server(level -> {
                         ServerPlayer p = player();
                         int slot = findChunk(p);
@@ -197,17 +204,17 @@ public final class ClientSelfTest {
                             check(false, "compressed chunk available to place");
                             return;
                         }
-                        // Set it down as a floating island further along the valley.
-                        BlockPos anchor = target.offset(24, 14, 6);
+                        // Set it back down as a floating island hovering above the hole it came from.
+                        BlockPos anchor = target.offset(0, 22, 0);
                         p.getCooldowns().removeCooldown(ModItems.COMPRESSED_CHUNK.get());
                         boolean ok = CompressedChunkItem.place(level, p, p.getInventory().getItem(slot), anchor);
                         check(ok && findChunk(p) < 0, "Compressed Chunk pasted back into the world and consumed");
                     });
                 }
-                if (t == 219) {
+                if (t == 228) {
                     shot(mc, "04_chunk_unfold");
                 }
-                if (t == 270) {
+                if (t == 276) {
                     check(ChunkEffects.placements > 0, "placement effect played on the client");
                     shot(mc, "05_floating_chunk");
                 }
