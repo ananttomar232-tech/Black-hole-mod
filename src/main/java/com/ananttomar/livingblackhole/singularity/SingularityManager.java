@@ -98,6 +98,7 @@ public final class SingularityManager {
                 owner != null ? owner.getUUID() : null, level.getGameTime());
         bh.setEventId(ev.id);
         level.addFreshEntity(bh);
+        bh.ensureChunkLoaded();
 
         BlockPos[] fragments = placeFragments(level, center, level.random);
         System.arraycopy(fragments, 0, ev.fragments, 0, SingularityEvent.FRAGMENTS);

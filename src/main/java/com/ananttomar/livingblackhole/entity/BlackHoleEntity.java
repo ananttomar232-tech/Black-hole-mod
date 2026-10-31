@@ -509,6 +509,17 @@ public class BlackHoleEntity extends Entity {
 
     // ------------------------------------------------------------------ chunk loading
 
+    /**
+     * Forces this singularity's chunk to stay loaded and entity-ticking right away. A chunk that was
+     * only loaded by a block access (no player nearby) never ticks its entities, so without this the
+     * black hole would never run its first tick and could unload before it ever claimed its ticket.
+     */
+    public void ensureChunkLoaded() {
+        if (this.level() instanceof ServerLevel level) {
+            updateChunkTicket(level);
+        }
+    }
+
     private void updateChunkTicket(ServerLevel level) {
         if (!Config.KEEP_CHUNK_LOADED.get()) {
             releaseChunkTicket();

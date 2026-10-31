@@ -37,6 +37,8 @@ public final class LensingEffect {
     private static boolean failed;
     private static int width = -1;
     private static int height = -1;
+    private static int framesApplied;
+    private static String lastSkip = "never invoked";
 
     private LensingEffect() {
     }
@@ -44,6 +46,11 @@ public final class LensingEffect {
     /** True once the lensing passes compiled and have been used for a frame. */
     public static boolean isReady() {
         return lensPass != null && !failed;
+    }
+
+    /** Frames the lensing pass actually ran, and why the latest frame was skipped (for diagnostics). */
+    public static String diagnostics() {
+        return "frames=" + framesApplied + ", lastSkip=" + lastSkip + ", failed=" + failed;
     }
 
     public static void reset() {
@@ -104,15 +111,18 @@ public final class LensingEffect {
      */
     public static void apply(Matrix4f view, Matrix4f projection, Camera camera, float partialTick) {
         if (!Config.LENSING.get()) {
+            lastSkip = "disabled in config";
             return;
         }
         BlackHoleEntity bh = ClientEffects.nearest();
         if (bh == null || bh.isRemoved()) {
+            lastSkip = "no black hole";
             return;
         }
         float scale = bh.getVisualScale(partialTick);
         float master = (float) (double) Config.LENSING_STRENGTH.get() * Mth.clamp(scale, 0.0F, 1.2F);
         if (master <= 0.01F) {
+            lastSkip = "zero strength";
             return;
         }
 
@@ -121,22 +131,26 @@ public final class LensingEffect {
         float horizon = bh.getHorizonRadius() * scale;
         Vector4f clip = project(view, projection, c.subtract(cam));
         if (clip.w <= 0.05F) {
+            lastSkip = "behind camera";
             return;
         }
         float ndcX = clip.x / clip.w;
         float ndcY = clip.y / clip.w;
         float ndcZ = clip.z / clip.w;
         if (Math.abs(ndcX) > 2.2F || Math.abs(ndcY) > 2.2F) {
+            lastSkip = "off screen";
             return;
         }
         // Apparent horizon radius in UV-height units, from a point offset along the camera's up axis.
         Vector3f up = camera.getUpVector();
         Vector4f edge = project(view, projection, c.subtract(cam).add(up.x() * horizon, up.y() * horizon, up.z() * horizon));
         if (edge.w <= 0.05F) {
+            lastSkip = "horizon edge behind camera";
             return;
         }
         float radiusUv = Math.abs(edge.y / edge.w - ndcY) * 0.5F;
         if (radiusUv < 1.0E-4F) {
+            lastSkip = "horizon too small on screen";
             return;
         }
         float edgeFade = Mth.clamp(2.2F - Math.max(Math.abs(ndcX), Math.abs(ndcY)), 0.0F, 1.0F);
@@ -144,6 +158,7 @@ public final class LensingEffect {
 
         Minecraft mc = Minecraft.getInstance();
         if (!ensure(mc) || lensPass == null || blitPass == null) {
+            lastSkip = "shader unavailable";
             return;
         }
         RenderTarget main = mc.getMainRenderTarget();
@@ -158,6 +173,7 @@ public final class LensingEffect {
         main.setFilterMode(GL11.GL_LINEAR);
         lensPass.process(partialTick);
         blitPass.process(partialTick);
+        framesApplied++;
         main.setFilterMode(GL11.GL_NEAREST);
         main.bindWrite(false);
         RenderSystem.enableDepthTest();

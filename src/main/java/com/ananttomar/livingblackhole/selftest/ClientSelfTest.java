@@ -18,7 +18,6 @@ import com.ananttomar.livingblackhole.registry.ModSounds;
 import com.ananttomar.livingblackhole.singularity.SingularityEvent;
 import com.ananttomar.livingblackhole.singularity.SingularityManager;
 import com.ananttomar.livingblackhole.singularity.SingularitySavedData;
-import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -373,7 +372,7 @@ public final class ClientSelfTest {
                 if (t == 30) {
                     shot(mc, "20_neutralized");
                     check(ClientSingularityState.events().isEmpty(), "HUD cleared after the black hole was destroyed");
-                    check(sawLensing, "gravitational lensing shader compiled and ran");
+                    check(sawLensing, "gravitational lensing shader compiled and ran (" + LensingEffect.diagnostics() + ")");
                     check(shots >= 19, "captured " + shots + " cinematic screenshots");
                 }
                 if (t >= 60 && PENDING_SHOTS.isEmpty()) {
