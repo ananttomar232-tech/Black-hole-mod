@@ -41,6 +41,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
+import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderGuiEvent;
@@ -224,6 +225,12 @@ public final class ClientSelfTest {
                     server(level -> {
                         ServerPlayer p = player();
                         p.getCooldowns().removeCooldown(ModItems.POCKET_BLACK_HOLE.get());
+                        // Breach close to the ground, as a player standing in the world would: the
+                        // black hole is born where the player is and should have terrain within reach.
+                        int gx = Mth.floor(p.getX());
+                        int gz = Mth.floor(p.getZ());
+                        int ground = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, gx, gz);
+                        p.connection.teleport(p.getX(), ground + 4.0, p.getZ(), p.getYRot(), p.getXRot());
                         BlockPos second = target.offset(-4, 0, -26);
                         second = new BlockPos(second.getX(), level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, second.getX(), second.getZ()) - 1, second.getZ());
                         PocketBlackHoleItem.consume(level, p, p.getMainHandItem(), InteractionHand.MAIN_HAND, second);
@@ -262,7 +269,9 @@ public final class ClientSelfTest {
                     shot(mc, "09_living_black_hole");
                 }
                 if (t == 560) {
-                    check(findBlackHole(mc) != null, "black hole entity tracked by the client");
+                    BlackHoleEntity tracked = findBlackHole(mc);
+                    check(tracked != null, "black hole entity tracked by the client");
+                    check(tracked != null && tracked.getMass() > 50, "black hole devouring terrain (mass " + (tracked != null ? tracked.getMass() : -1) + ")");
                     shot(mc, "10_devouring");
                     next(5);
                 }
