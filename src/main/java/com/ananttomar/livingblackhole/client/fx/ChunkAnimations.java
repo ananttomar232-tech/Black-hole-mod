@@ -142,10 +142,10 @@ public final class ChunkAnimations {
             return new Frame(home, 1.002F, 0.0F, 1.0F, 1.0F, 1.0F);
         }
         float ease = 1.0F - (float) Math.pow(1.0F - t, 2.4);
-        // Overshoots a touch and settles, like something springing back into shape.
-        float c1 = 1.4F;
-        float back = 1.0F + (c1 + 1.0F) * (float) Math.pow(t - 1.0F, 3) + c1 * (float) Math.pow(t - 1.0F, 2);
-        float scale = Math.max(HAND_SCALE, HAND_SCALE + (1.0F - HAND_SCALE) * back);
+        // Size lags the flight so the structure only fills out as it nears the ground, then swells
+        // a touch just before touchdown and settles, like something springing back into shape.
+        float settle = 1.0F + 0.06F * Mth.sin(Mth.PI * Mth.clamp((t - 0.78F) / 0.22F, 0.0F, 1.0F));
+        float scale = (HAND_SCALE + (1.0F - HAND_SCALE) * (float) Math.pow(t, 1.8)) * settle;
         Vec3 c = a.hand.lerp(home, ease).add(0.0, Math.sin(Math.PI * t) * 2.5, 0.0);
         float spin = -(1.0F - ease) * (1.0F - ease) * 300.0F;
         return new Frame(c, scale, spin, 0.75F + 0.25F * t, 0.92F + 0.08F * t, 1.0F);
