@@ -27,7 +27,7 @@ Captured automatically by the CI client self-test (software rendering, default s
 | *The shockwave: singularity neutralized* | |
 
 ![Models](docs/models.png)
-*Pocket Black Hole (stable / critical), Compressed Chunk, Anti-Gravity Bomb, Core Fragment.*
+*Item models: Pocket Black Hole (stable / critical), an empty Compressed Chunk (a filled one shows its own 3D miniature, above), Anti-Gravity Bomb, Core Fragment.*
 
 ---
 
