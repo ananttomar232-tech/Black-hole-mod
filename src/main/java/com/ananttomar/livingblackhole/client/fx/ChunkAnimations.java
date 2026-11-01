@@ -16,6 +16,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.phys.Vec3;
@@ -35,8 +36,10 @@ public final class ChunkAnimations {
     private static final float TREMBLE = 0.14F;
     /** Size of the structure at the hand end of its flight, relative to full size. */
     private static final float HAND_SCALE = 0.006F;
-    /** Ticks a landed structure stays drawn while the real blocks arrive and are meshed. */
-    private static final int LAND_HOLD = 5;
+    /** Ticks a landed structure stays drawn after the real blocks have arrived, while they are meshed. */
+    private static final int LAND_HOLD = 6;
+    /** Upper bound on waiting for the real blocks (a lagging server, an unloaded spot). */
+    private static final int LAND_TIMEOUT = 40;
 
     /** Diagnostics for the CI self-test. */
     public static int started;
@@ -53,6 +56,8 @@ public final class ChunkAnimations {
         Vec3 hand;
         int age;
         boolean finished;
+        /** Ticks since the client world has shown the landed blocks. */
+        int settled;
 
         Anim(ChunkFxPacket msg, boolean mine) {
             this.data = msg.structure;
@@ -106,10 +111,38 @@ public final class ChunkAnimations {
                 a.finished = true;
                 arrive(level, a);
             }
-            if (a.age > a.duration + (a.grow ? LAND_HOLD : 0)) {
-                it.remove();
+            if (!a.grow) {
+                if (a.age > a.duration) {
+                    it.remove();
+                }
+            } else if (a.age > a.duration) {
+                // Keep the landed ghost until the real blocks are in the world and have had time to mesh.
+                if (a.settled > 0 || landedInWorld(level, a)) {
+                    a.settled++;
+                }
+                if (a.settled > LAND_HOLD || a.age > a.duration + LAND_TIMEOUT) {
+                    it.remove();
+                }
             }
         }
+    }
+
+    /** True once a sample of the structure's blocks is present in the client world. */
+    private static boolean landedInWorld(ClientLevel level, Anim a) {
+        int[] blocks = a.data.blocks;
+        int step = Math.max(1, blocks.length / 24);
+        int checked = 0;
+        int present = 0;
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        for (int i = 0; i < blocks.length; i += step) {
+            int packed = blocks[i];
+            pos.set(a.origin.x + StructureData.x(packed), a.origin.y + StructureData.y(packed), a.origin.z + StructureData.z(packed));
+            checked++;
+            if (level.getBlockState(pos).getBlock() == a.data.state(packed).getBlock()) {
+                present++;
+            }
+        }
+        return checked > 0 && present >= checked * 0.8;
     }
 
     // ------------------------------------------------------------------ motion

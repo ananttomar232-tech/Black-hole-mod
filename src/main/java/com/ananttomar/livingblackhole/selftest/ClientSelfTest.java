@@ -209,7 +209,7 @@ public final class ClientSelfTest {
                             "shrink-into-the-hand animation drawn (" + ChunkAnimations.framesDrawn + " frames)");
                     shot(mc, "03_chunk_hole");
                 }
-                if (t == 202 && mc.player != null) {
+                if (t == 196 && mc.player != null) {
                     // Hold the Compressed Chunk: its miniature should show the swallowed blocks.
                     for (int i = 0; i < 9; i++) {
                         if (mc.player.getInventory().getItem(i).is(ModItems.COMPRESSED_CHUNK.get())) {
@@ -217,25 +217,25 @@ public final class ClientSelfTest {
                         }
                     }
                 }
-                if (t == 212) {
+                if (t == 208) {
                     check(mc.player != null && mc.player.getMainHandItem().is(ModItems.COMPRESSED_CHUNK.get()), "holding the Compressed Chunk");
                     shot(mc, "03a_miniature_in_hand");
                 }
-                if (t == 214 && mc.player != null) {
+                if (t == 216 && mc.player != null) {
                     mc.setScreen(new InventoryScreen(mc.player));
                 }
-                if (t == 222) {
+                if (t == 228) {
                     check(CompressedChunkItemRenderer.miniatures > 0,
                             "Compressed Chunk drawn as a 3D miniature of its blocks (" + CompressedChunkItemRenderer.miniatures + " renders)");
                     shot(mc, "03b_inventory_miniature");
                 }
-                if (t == 226) {
+                if (t == 230) {
                     mc.setScreen(null);
                     // Frame the hole and the spot just south of it where the chunk will be set back down.
                     Vec3 mid = Vec3.atCenterOf(target).add(0.0, 0.0, 10.0);
                     lookAt(mid.add(-40.0, 18.0, -2.0), mid.add(0.0, 5.0, 0.0));
                 }
-                if (t == 234) {
+                if (t == 236) {
                     server(level -> {
                         ServerPlayer p = player();
                         p.getInventory().selected = 0;
@@ -256,13 +256,13 @@ public final class ClientSelfTest {
                         mc.player.getInventory().selected = 0;
                     }
                 }
-                if (t == 242) {
+                if (t == 244) {
                     shot(mc, "04_unfold_grow");
                 }
-                if (t == 252) {
+                if (t == 254) {
                     shot(mc, "04b_unfold_landing");
                 }
-                if (t == 270) {
+                if (t == 284) {
                     check(ChunkEffects.placements > 0, "placement effect played on the client");
                     server(level -> {
                         if (placeData == null) {
