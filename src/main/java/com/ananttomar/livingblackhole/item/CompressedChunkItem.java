@@ -1,11 +1,15 @@
 package com.ananttomar.livingblackhole.item;
 
 import com.ananttomar.livingblackhole.Config;
+import com.ananttomar.livingblackhole.client.render.CompressedChunkItemRenderer;
 import com.ananttomar.livingblackhole.network.ChunkFxPacket;
 import com.ananttomar.livingblackhole.network.ModNetwork;
 import com.ananttomar.livingblackhole.registry.ModSounds;
 import com.ananttomar.livingblackhole.singularity.ChunkCapture;
+import com.ananttomar.livingblackhole.singularity.PendingPlacements;
+import com.ananttomar.livingblackhole.singularity.StructureData;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -26,15 +30,17 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
- * A 16x16x16 piece of the world folded into a fist-sized lattice. Right-click a surface to unfold
- * it: the structure lands exactly as it was taken (the block you originally clicked lands on the
- * block you click now), block entities and their contents included. The chunk is used up.
+ * A 16x16x16 piece of the world folded into a fist-sized lattice, shown as a live 3D miniature of
+ * the blocks inside it. Right-click a block to unfold it on top: the structure grows back to full
+ * size with its lowest layer resting on the clicked block, block entities and their contents
+ * included. The chunk is used up.
  */
 public class CompressedChunkItem extends Item {
     public CompressedChunkItem(Properties properties) {
@@ -58,30 +64,47 @@ public class CompressedChunkItem extends Item {
         return place(serverLevel, serverPlayer, stack, context.getClickedPos()) ? InteractionResult.CONSUME : InteractionResult.FAIL;
     }
 
-    /** Unfolds the chunk around {@code anchor}. Public so commands and tests can drive it. */
-    public static boolean place(ServerLevel level, ServerPlayer player, ItemStack stack, BlockPos anchor) {
-        if (!ChunkCapture.hasStructure(stack)) {
+    /**
+     * Unfolds the chunk on top of {@code clicked}: its lowest layer rests on the clicked block. The
+     * structure leaves the hand as a miniature and grows back to full size; the blocks are set down
+     * when it lands ({@link PendingPlacements#GROW_TICKS} later). Public so commands and tests can drive it.
+     */
+    public static boolean place(ServerLevel level, ServerPlayer player, ItemStack stack, BlockPos clicked) {
+        CompoundTag data = ChunkCapture.data(stack);
+        if (data == null) {
             player.displayClientMessage(Component.translatable("message.livingblackhole.chunk_empty").withStyle(ChatFormatting.GRAY), true);
             return false;
         }
         if (player.getCooldowns().isOnCooldown(stack.getItem())) {
             return false;
         }
-        ChunkCapture.Placed placed = ChunkCapture.place(level, player, stack, anchor);
-        if (placed.count() == 0) {
+        ChunkCapture.Plan plan = ChunkCapture.plan(level, player, data, clicked);
+        if (plan.count() == 0) {
             player.displayClientMessage(Component.translatable("message.livingblackhole.chunk_blocked").withStyle(ChatFormatting.GRAY), true);
             return false;
         }
-        Vec3 center = Vec3.atLowerCornerOf(placed.min()).add(8.0, 8.0, 8.0);
+        CompoundTag payload = data.copy();
         ModNetwork.sendToTrackingAndSelf(player, new ChunkFxPacket(ChunkFxPacket.PLACE, player.getId(),
-                PocketBlackHoleItem.handPosition(player), placed.min(), placed.fx()));
-        level.playSound(null, center.x, center.y, center.z, ModSounds.CHUNK_PLACE.get(), SoundSource.PLAYERS, 3.0F, 1.0F);
+                PocketBlackHoleItem.handPosition(player), plan.min(), PendingPlacements.GROW_TICKS, StructureData.fromTag(payload)));
+        level.playSound(null, player.getX(), player.getY(), player.getZ(), ModSounds.CHUNK_PLACE.get(), SoundSource.PLAYERS, 0.8F, 1.6F);
+        PendingPlacements.schedule(level, player, payload, plan.min(), PendingPlacements.GROW_TICKS);
         player.awardStat(Stats.ITEM_USED.get(stack.getItem()));
         player.getCooldowns().addCooldown(stack.getItem(), Config.POCKET_COOLDOWN.get());
-        player.displayClientMessage(Component.translatable("message.livingblackhole.chunk_placed", placed.count())
+        player.displayClientMessage(Component.translatable("message.livingblackhole.chunk_unfolding", plan.count())
                 .withStyle(ChatFormatting.AQUA), true);
         stack.shrink(1);
         return true;
+    }
+
+    /** The live 3D miniature of the stored structure (client only). */
+    @Override
+    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
+        consumer.accept(new IClientItemExtensions() {
+            @Override
+            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                return CompressedChunkItemRenderer.get();
+            }
+        });
     }
 
     @Override

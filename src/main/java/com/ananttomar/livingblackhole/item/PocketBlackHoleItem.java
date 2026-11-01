@@ -98,7 +98,8 @@ public class PocketBlackHoleItem extends Item {
 
         Vec3 center = Vec3.atLowerCornerOf(captured.min()).add(8.0, 8.0, 8.0);
         Vec3 hand3 = handPosition(player);
-        ModNetwork.sendToTrackingAndSelf(player, new ChunkFxPacket(ChunkFxPacket.CAPTURE, player.getId(), hand3, captured.min(), captured.fx()));
+        ModNetwork.sendToTrackingAndSelf(player, new ChunkFxPacket(ChunkFxPacket.CAPTURE, player.getId(), hand3, captured.min(),
+                ChunkFxPacket.CAPTURE_TICKS, captured.structure()));
         level.playSound(null, center.x, center.y, center.z, ModSounds.VACUUM.get(), SoundSource.PLAYERS, 3.0F, 1.0F);
         level.playSound(null, player.getX(), player.getY(), player.getZ(), ModSounds.VACUUM.get(), SoundSource.PLAYERS, 1.0F,
                 1.05F + instability(stack) * 0.25F);

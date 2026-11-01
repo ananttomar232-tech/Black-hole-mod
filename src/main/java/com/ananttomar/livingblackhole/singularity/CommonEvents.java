@@ -13,6 +13,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.event.level.ExplosionEvent;
+import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -52,7 +53,14 @@ public final class CommonEvents {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server != null) {
             SingularityManager.serverTick(server);
+            PendingPlacements.tick(server);
         }
+    }
+
+    /** Structures still growing back into the world are set down before the world is saved. */
+    @SubscribeEvent
+    public static void onServerStopping(ServerStoppingEvent event) {
+        PendingPlacements.flush(event.getServer());
     }
 
     @SubscribeEvent

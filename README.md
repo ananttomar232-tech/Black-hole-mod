@@ -4,7 +4,7 @@ A cinematic singularity event for **Minecraft 1.20.1 (Forge 47.x)**.
 
 The Pocket Black Hole swallows whole 16×16×16 chunks of the world (a house, a hill, a lake) into Compressed Chunks you can paste back anywhere. Feed it ten and its containment fails. A living black hole tears the world apart and drags everything toward it, you included, while three Core Fragments crash down within 300 blocks. Recover them, forge an Anti-Gravity Bomb, and throw it into the event horizon before there is nothing left to save.
 
-**Download:** grab `LivingBlackHole-2.0.0-forge-1.20.1.jar` from the [latest release](https://github.com/ananttomar232-tech/Black-hole-mod/releases/latest) and drop it into `.minecraft/mods`.
+**Download:** grab `LivingBlackHole-2.1.0-forge-1.20.1.jar` from the [latest release](https://github.com/ananttomar232-tech/Black-hole-mod/releases/latest) and drop it into `.minecraft/mods`.
 
 Every release is built by CI, then played end to end on a dedicated server and in a real client before it is published. Screenshots from the latest automated run are attached to the [`ci-evidence` release](https://github.com/ananttomar232-tech/Black-hole-mod/releases/tag/ci-evidence).
 
@@ -40,9 +40,10 @@ A E A      A = Amethyst Shard
 C A C      E = Eye of Ender
 ```
 
-- **Right-click any block** and the singularity swallows the **16×16×16 region centred on it**: a house, a mountain top, a lake. Matter whirls down a swirling vortex into the device with a vacuum roar, leaving a perfect cube-shaped hole in the world.
-- Everything taken is stored in the NBT of a new **Compressed Chunk** item in your inventory: block states, positions *and* block-entity data, so chests keep their contents and signs keep their text. Nothing drops. A 3D miniature of a voxel world in a glowing cage marks it, and its tooltip lists what's inside and where it came from.
-- **Right-click a surface with a Compressed Chunk** to unfold it. The structure lands exactly as it was taken (the block you originally clicked lands on the block you click now), and the item is used up. Anyone standing inside is lifted clear instead of suffocating.
+- **Right-click any block** and the singularity swallows the **16×16×16 region centred on it**: a house, a mountain top, a lake. The structure shudders in its socket, then the whole thing **visibly shrinks, spins and flies straight into the Pocket Black Hole in your hand**, the real blocks rendered all the way down, with a swirling vortex and a vacuum roar. It leaves a perfect cube-shaped hole in the world.
+- Everything taken is stored in the NBT of a new **Compressed Chunk** item in your inventory: block states, positions *and* block-entity data, so chests keep their contents and signs keep their text. Nothing drops.
+- **The Compressed Chunk shows what's inside it.** A custom item renderer bakes the stored blocks into a real 3D miniature (the exact house or mountain you swallowed, with the game's own block models, ambient occlusion, water and biome-correct grass and leaf colours) floating in a glowing containment cage. You see it in your inventory, in your hand, on the ground and in item frames. The tooltip lists the main blocks and where they came from.
+- **Right-click a block with a Compressed Chunk** to unfold it. The miniature leaves your hand and **scales back up to full size** as it flies into place. It lands with its **lowest layer resting exactly on top of the block you clicked**, centred over it, never half-buried. The blocks are set down the instant the animation lands, and the item is used up. Anyone standing in the way is lifted clear instead of suffocating.
 - Both directions respect spawn protection and claim mods (`BlockEvent.BreakEvent`). Bedrock, end portals and Core Fragments are never taken or overwritten.
 - The durability bar shows **containment integrity** (cyan → violet → red). The 3D model escalates through stable, unstable and critical states, the device leaks sparks as it fills, and warnings fire at 50%, 80% and 90%.
 - **Hidden limit: 10 chunks.**
@@ -51,7 +52,7 @@ C A C      E = Eye of Ender
 When the 10th chunk goes in:
 - The Pocket Black Hole is **deleted** from your inventory.
 - A **Living Black Hole** spawns exactly where you stand. The breach throws you clear, with slow falling and resistance so you survive.
-- **Three Core Fragments** crash down at random surface coordinates within 300 blocks, each in a scorched crater with a sky beam you can see from far away.
+- **Three Core Fragments** crash down at random surface coordinates within 300 blocks, each in a scorched crater with a sky beam you can see from far away. Core Fragments **never generate with the world**: the mod adds no ores, features or biome modifiers. Exactly three are created, only at the moment a black hole escapes.
 - Alarms sound, the screen glitches and flashes red, and a **permanent HUD** appears with flashing red text:
   > **⚠ WARNING: BLACK HOLE ESCAPED! ⚠**
   > To stop this black hole, collect Core Fragments at: [x, y, z], [x, y, z], [x, y, z]
@@ -60,7 +61,7 @@ When the 10th chunk goes in:
 
 ### 3. The Living Black Hole
 - It never moves, but it **devours every block within a 30-block radius**, nearest matter first, its reach growing as it feeds. Torn-out blocks become **gravitational debris**: real entities that tumble, glow red-hot and stretch (spaghettify) as they spiral across the horizon.
-- **Everything is pulled toward it, players included.** Mobs and items are dragged in and destroyed. Players feel a constant, gentle drag toward the centre, from a slight lean at the 30-block edge to roughly walking speed next to the core: walking away barely holds ground, **sprinting always escapes**. The pull is weaker in the air so jumps don't turn into launches. Flying into the horizon itself is fatal.
+- **Everything is pulled toward it, players included.** Mobs and items are dragged in and destroyed. Players feel a constant, gentle drag toward the centre (applied with `addDeltaMovement` on the client-side player, so movement stays smooth), from a slight lean at the 30-block edge to roughly walking speed next to the core: walking away barely holds ground, **sprinting always escapes**. The pull is weaker in the air so jumps don't turn into launches. Flying into the horizon itself is fatal.
 - Rendering, in layers:
   - a pitch-black event horizon
   - a Doppler-beamed accretion disk with Keplerian differential rotation
@@ -74,8 +75,10 @@ When the 10th chunk goes in:
 Mine the three Core Fragments with any tool (they always drop, never despawn and survive lava), then craft:
 
 ```
-3 × Core Fragment + 1 × Compressed Chunk  →  Anti-Gravity Bomb   (shapeless)
+3 × Core Fragment + 1 × Compressed Chunk  →  1 × Anti-Gravity Bomb   (shapeless, any crafting table)
 ```
+
+The recipe is exact: any arrangement works, but 4 fragments, or fragments without a chunk, craft nothing.
 
 The bomb has a glowing emissive 3D model and sheds sparks that fall *upward* while held.
 

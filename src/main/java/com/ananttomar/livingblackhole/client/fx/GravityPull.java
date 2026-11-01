@@ -57,7 +57,8 @@ public final class GravityPull {
             accel *= AIR_FACTOR;
         }
         Vec3 dir = to.scale(1.0 / d);
-        player.setDeltaMovement(player.getDeltaMovement().add(dir.x * accel, dir.y * accel * VERTICAL_FACTOR, dir.z * accel));
+        // Player movement is client-authoritative, so the drag is applied to the local player here.
+        player.addDeltaMovement(new Vec3(dir.x * accel, dir.y * accel * VERTICAL_FACTOR, dir.z * accel));
         ticksApplied++;
     }
 }

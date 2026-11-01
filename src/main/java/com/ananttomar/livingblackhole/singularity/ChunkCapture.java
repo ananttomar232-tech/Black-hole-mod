@@ -1,6 +1,5 @@
 package com.ananttomar.livingblackhole.singularity;
 
-import com.ananttomar.livingblackhole.network.ChunkFxPacket;
 import com.ananttomar.livingblackhole.registry.ModItems;
 import com.ananttomar.livingblackhole.registry.ModTags;
 import net.minecraft.core.BlockPos;
@@ -30,6 +29,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Lifts a 16x16x16 region of the world into item NBT and puts it back.
@@ -39,10 +39,13 @@ import java.util.Map;
  *     <li>{@code Palette} - list of serialized block states</li>
  *     <li>{@code Blocks} - int array, one entry per stored block: {@code paletteIndex << 12 | x << 8 | y << 4 | z}</li>
  *     <li>{@code BlockEntities} - list of {@code {P: packedPos, Nbt: fullBlockEntityData}} (chest contents, signs...)</li>
+ *     <li>{@code Id} - identity of the structure (client mesh cache key)</li>
+ *     <li>{@code Biome} - biome it was taken from, for grass/foliage/water tints of the miniature</li>
+ *     <li>{@code Bounds} - local bounding box of the stored blocks</li>
  *     <li>{@code Count}, {@code Origin}, {@code Dim}, {@code Summary} - metadata for the tooltip</li>
  * </ul>
- * Positions are relative to the region corner; the region is anchored so the clicked block sits at
- * offset (8, 8, 8), which makes capture and placement exact inverses of each other.
+ * Capture takes the region centred on the clicked block. Placement sets the structure down so its
+ * lowest layer rests exactly on top of the clicked block, centred over it horizontally.
  */
 public final class ChunkCapture {
     public static final String TAG = "LBHChunk";
@@ -51,10 +54,11 @@ public final class ChunkCapture {
     /** No neighbour shape updates and no drops while blocks are lifted or set down in bulk. */
     private static final int BULK_FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_SUPPRESS_DROPS;
 
-    public record Captured(ItemStack chunk, BlockPos min, List<ChunkFxPacket.Entry> fx) {
+    public record Captured(ItemStack chunk, BlockPos min, StructureData structure) {
     }
 
-    public record Placed(int count, BlockPos min, List<ChunkFxPacket.Entry> fx) {
+    /** Where a structure will land and how many of its blocks can be set down there. */
+    public record Plan(BlockPos min, int count) {
     }
 
     private ChunkCapture() {
@@ -123,8 +127,6 @@ public final class ChunkCapture {
             return null;
         }
 
-        List<ChunkFxPacket.Entry> fx = sampleFx(level, taken);
-
         // Empty containers first so nothing spills, then lift every block without cascades.
         for (BlockPos pos : taken) {
             BlockEntity be = level.getBlockEntity(pos);
@@ -155,10 +157,16 @@ public final class ChunkCapture {
         data.putIntArray("Origin", new int[]{target.getX(), target.getY(), target.getZ()});
         data.putString("Dim", level.dimension().location().toString());
         data.put("Summary", summary(census));
+        UUID id = UUID.randomUUID();
+        data.putUUID("Id", id);
+        String biome = level.getBiome(target).unwrapKey().map(k -> k.location().toString()).orElse("");
+        data.putString("Biome", biome);
+        data.putIntArray("Bounds", StructureData.bounds(packedBlocks));
 
         ItemStack chunk = new ItemStack(ModItems.COMPRESSED_CHUNK.get());
         chunk.getOrCreateTag().put(TAG, data);
-        return new Captured(chunk, min, fx);
+        int[] paletteIds = palette.keySet().stream().mapToInt(Block::getId).toArray();
+        return new Captured(chunk, min, new StructureData(id, paletteIds, packedBlocks, biome));
     }
 
     private static boolean onShell(BlockPos pos, BlockPos min) {
@@ -181,17 +189,6 @@ public final class ChunkCapture {
         return list;
     }
 
-    private static List<ChunkFxPacket.Entry> sampleFx(ServerLevel level, List<BlockPos> positions) {
-        List<ChunkFxPacket.Entry> fx = new ArrayList<>();
-        int step = Math.max(1, positions.size() / ChunkFxPacket.MAX_ENTRIES);
-        int offset = level.random.nextInt(step);
-        for (int i = offset; i < positions.size() && fx.size() < ChunkFxPacket.MAX_ENTRIES; i += step) {
-            BlockPos pos = positions.get(i);
-            fx.add(new ChunkFxPacket.Entry(pos, Block.getId(level.getBlockState(pos))));
-        }
-        return fx;
-    }
-
     // ------------------------------------------------------------------ placement
 
     public static boolean hasStructure(ItemStack stack) {
@@ -203,18 +200,58 @@ public final class ChunkCapture {
         return hasStructure(stack) ? stack.getTag().getCompound(TAG) : null;
     }
 
-    /** Sets the stored structure down so the original clicked block lands on {@code anchor}. */
-    public static Placed place(ServerLevel level, ServerPlayer player, ItemStack chunk, BlockPos anchor) {
-        CompoundTag data = data(chunk);
-        BlockPos min = regionMin(anchor);
-        if (data == null) {
-            return new Placed(0, min, List.of());
-        }
+    /** Local bounding box of the stored blocks ({minX, minY, minZ, maxX, maxY, maxZ}). */
+    public static int[] bounds(CompoundTag data) {
+        int[] b = data.getIntArray("Bounds");
+        return b.length == 6 ? b : StructureData.bounds(data.getIntArray("Blocks"));
+    }
+
+    /**
+     * World position of the structure's local origin when it is set down on {@code clicked}: the
+     * lowest stored layer lands on {@code clicked.y + 1} - resting on top of the clicked block, never
+     * buried in it - and the structure is centred over the clicked block horizontally.
+     */
+    public static BlockPos placementMin(CompoundTag data, BlockPos clicked) {
+        int[] b = bounds(data);
+        int cx = (b[0] + b[3]) / 2;
+        int cz = (b[2] + b[5]) / 2;
+        return new BlockPos(clicked.getX() - cx, clicked.getY() + 1 - b[1], clicked.getZ() - cz);
+    }
+
+    private static BlockState[] readPalette(CompoundTag data) {
         ListTag paletteTag = data.getList("Palette", Tag.TAG_COMPOUND);
         BlockState[] palette = new BlockState[paletteTag.size()];
         for (int i = 0; i < palette.length; i++) {
             palette[i] = NbtUtils.readBlockState(BuiltInRegistries.BLOCK.asLookup(), paletteTag.getCompound(i));
         }
+        return palette;
+    }
+
+    private static boolean placeable(ServerLevel level, ServerPlayer player, BlockPos pos) {
+        if (level.isOutsideBuildHeight(pos)) {
+            return false;
+        }
+        BlockState existing = level.getBlockState(pos);
+        return !untouchable(level, pos, existing) && permitted(level, player, pos, existing);
+    }
+
+    /** Works out where the structure would land on {@code clicked} and how much of it fits there. */
+    public static Plan plan(ServerLevel level, ServerPlayer player, CompoundTag data, BlockPos clicked) {
+        BlockPos min = placementMin(data, clicked);
+        int count = 0;
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int packed : data.getIntArray("Blocks")) {
+            cursor.set(min.getX() + StructureData.x(packed), min.getY() + StructureData.y(packed), min.getZ() + StructureData.z(packed));
+            if (placeable(level, player, cursor)) {
+                count++;
+            }
+        }
+        return new Plan(min, count);
+    }
+
+    /** Sets the stored structure down with its local origin at {@code min}. Returns the number of blocks placed. */
+    public static int commit(ServerLevel level, ServerPlayer player, CompoundTag data, BlockPos min) {
+        BlockState[] palette = readPalette(data);
         Map<Integer, CompoundTag> blockEntities = new HashMap<>();
         ListTag beList = data.getList("BlockEntities", Tag.TAG_COMPOUND);
         for (int i = 0; i < beList.size(); i++) {
@@ -230,13 +267,9 @@ public final class ChunkCapture {
             if (index >= palette.length) {
                 continue;
             }
-            int local = packed & 0xFFF;
-            BlockPos pos = min.offset((local >> 8) & 0xF, (local >> 4) & 0xF, local & 0xF);
-            if (level.isOutsideBuildHeight(pos)) {
-                continue;
-            }
-            BlockState existing = level.getBlockState(pos);
-            if (untouchable(level, pos, existing) || !permitted(level, player, pos, existing)) {
+            int local = StructureData.local(packed);
+            BlockPos pos = min.offset(StructureData.x(packed), StructureData.y(packed), StructureData.z(packed));
+            if (!placeable(level, player, pos)) {
                 continue;
             }
             placedPositions.add(pos);
@@ -244,7 +277,7 @@ public final class ChunkCapture {
             placedEntities.add(blockEntities.get(local));
         }
         if (placedPositions.isEmpty()) {
-            return new Placed(0, min, List.of());
+            return 0;
         }
 
         for (int i = 0; i < placedPositions.size(); i++) {
@@ -276,8 +309,7 @@ public final class ChunkCapture {
             }
         }
         liftEntitiesOutOfBlocks(level, min);
-
-        return new Placed(placedPositions.size(), min, sampleFx(level, placedPositions));
+        return placedPositions.size();
     }
 
     /** Anything (players included) the structure was set down on top of is lifted clear instead of suffocating. */

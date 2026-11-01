@@ -5,9 +5,11 @@ import com.ananttomar.livingblackhole.client.hud.SingularityHudOverlay;
 import com.ananttomar.livingblackhole.client.particle.ModParticleProviders;
 import com.ananttomar.livingblackhole.client.render.AntiGravityBombRenderer;
 import com.ananttomar.livingblackhole.client.render.BlackHoleRenderer;
+import com.ananttomar.livingblackhole.client.render.CompressedChunkItemRenderer;
 import com.ananttomar.livingblackhole.client.render.CoreFragmentRenderer;
 import com.ananttomar.livingblackhole.client.render.GravitationalDebrisRenderer;
 import com.ananttomar.livingblackhole.client.render.LensingEffect;
+import com.ananttomar.livingblackhole.client.render.StructureMeshCache;
 import com.ananttomar.livingblackhole.item.PocketBlackHoleItem;
 import com.ananttomar.livingblackhole.registry.ModBlockEntities;
 import com.ananttomar.livingblackhole.registry.ModEntities;
@@ -16,6 +18,7 @@ import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
+import net.minecraftforge.client.event.ModelEvent;
 import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
@@ -44,6 +47,13 @@ public final class ClientSetup {
         event.registerBlockEntityRenderer(ModBlockEntities.CORE_FRAGMENT.get(), CoreFragmentRenderer::new);
     }
 
+    /** The Compressed Chunk's cage and its empty fallback are drawn by its item renderer, not baked as item models. */
+    @SubscribeEvent
+    public static void registerAdditionalModels(ModelEvent.RegisterAdditional event) {
+        event.register(CompressedChunkItemRenderer.CAGE);
+        event.register(CompressedChunkItemRenderer.EMPTY);
+    }
+
     @SubscribeEvent
     public static void registerParticles(RegisterParticleProvidersEvent event) {
         ModParticleProviders.register(event);
@@ -56,6 +66,10 @@ public final class ClientSetup {
 
     @SubscribeEvent
     public static void registerReloadListeners(RegisterClientReloadListenersEvent event) {
-        event.registerReloadListener((ResourceManagerReloadListener) manager -> LensingEffect.reset());
+        event.registerReloadListener((ResourceManagerReloadListener) manager -> {
+            LensingEffect.reset();
+            // Baked miniatures hold block atlas UVs, which a reload may move.
+            StructureMeshCache.clear();
+        });
     }
 }

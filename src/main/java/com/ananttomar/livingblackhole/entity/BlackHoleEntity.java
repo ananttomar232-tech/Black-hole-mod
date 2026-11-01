@@ -393,12 +393,13 @@ public class BlackHoleEntity extends Entity {
                 if (tangent.lengthSqr() > 1.0E-6) {
                     tangent = tangent.normalize().scale(0.05 * falloff * strength);
                 }
-                Vec3 v = e.getDeltaMovement().scale(0.9).add(dir.scale(accel)).add(tangent);
+                // Damp the old motion a little so orbits decay, then pull toward the centre.
+                e.setDeltaMovement(e.getDeltaMovement().scale(0.9));
+                e.addDeltaMovement(dir.scale(accel).add(tangent));
                 double max = 1.9;
-                if (v.lengthSqr() > max * max) {
-                    v = v.normalize().scale(max);
+                if (e.getDeltaMovement().lengthSqr() > max * max) {
+                    e.setDeltaMovement(e.getDeltaMovement().normalize().scale(max));
                 }
-                e.setDeltaMovement(v);
                 e.hasImpulse = true;
                 e.hurtMarked = true;
                 e.fallDistance = 0.0F;

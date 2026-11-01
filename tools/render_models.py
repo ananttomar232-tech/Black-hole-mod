@@ -147,7 +147,7 @@ def render(rl, size=256, bg=(28, 28, 34)):
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else "models.png"
     models = ["livingblackhole:item/pocket_black_hole", "livingblackhole:item/pocket_black_hole_critical",
-              "livingblackhole:item/compressed_chunk", "livingblackhole:item/anti_gravity_bomb",
+              "livingblackhole:item/compressed_chunk_empty", "livingblackhole:item/anti_gravity_bomb",
               "livingblackhole:block/core_fragment"]
     tiles = [render(m) for m in models]
     sheet = Image.new("RGB", (256 * len(tiles), 256))

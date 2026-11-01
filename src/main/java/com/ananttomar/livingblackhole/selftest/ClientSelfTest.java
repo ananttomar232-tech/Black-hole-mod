@@ -45,6 +45,14 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderGuiEvent;
+import com.ananttomar.livingblackhole.client.fx.ChunkAnimations;
+import com.ananttomar.livingblackhole.client.render.CompressedChunkItemRenderer;
+import com.ananttomar.livingblackhole.client.render.StructureMeshCache;
+import com.ananttomar.livingblackhole.singularity.ChunkCapture;
+import com.ananttomar.livingblackhole.singularity.StructureData;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -70,6 +78,8 @@ public final class ClientSelfTest {
     private static final List<String> REPORT = new ArrayList<>();
     private static final List<Runnable> SCHEDULE = new ArrayList<>();
     private static final List<String> PENDING_SHOTS = new ArrayList<>();
+    private static BlockPos placeClicked;
+    private static CompoundTag placeData;
 
     private static int phase;
     private static int clock;
@@ -184,42 +194,93 @@ public final class ClientSelfTest {
                         check(findChunk(p) >= 0, "Compressed Chunk delivered to the inventory");
                     });
                 }
-                if (t == 168) {
-                    shot(mc, "01_vortex");
+                if (t == 172) {
+                    // The structure lets go of the ground and shrinks on its way into the device.
+                    shot(mc, "01_shrink");
                 }
-                if (t == 176) {
+                if (t == 182) {
+                    shot(mc, "02_into_the_hand");
+                }
+                if (t == 200) {
                     check(ChunkEffects.captures > 0, "swirling capture effect played on the client");
-                    shot(mc, "02_vortex_drain");
-                }
-                if (t == 215) {
+                    check(StructureMeshCache.builds > 0 && StructureMeshCache.lastVertices > 0,
+                            "captured structure baked into a 3D mesh (" + StructureMeshCache.lastVertices + " vertices)");
+                    check(ChunkAnimations.started > 0 && ChunkAnimations.framesDrawn > 0,
+                            "shrink-into-the-hand animation drawn (" + ChunkAnimations.framesDrawn + " frames)");
                     shot(mc, "03_chunk_hole");
                 }
-                if (t == 216) {
-                    // Pull back so the hole and the island about to hover over it share the frame.
-                    Vec3 hole = Vec3.atCenterOf(target);
-                    lookAt(hole.add(-36.0, 16.0, 14.0), hole.add(0.0, 9.0, 0.0));
+                if (t == 202 && mc.player != null) {
+                    // Hold the Compressed Chunk: its miniature should show the swallowed blocks.
+                    for (int i = 0; i < 9; i++) {
+                        if (mc.player.getInventory().getItem(i).is(ModItems.COMPRESSED_CHUNK.get())) {
+                            mc.player.getInventory().selected = i;
+                        }
+                    }
                 }
-                if (t == 224) {
+                if (t == 212) {
+                    check(mc.player != null && mc.player.getMainHandItem().is(ModItems.COMPRESSED_CHUNK.get()), "holding the Compressed Chunk");
+                    shot(mc, "03a_miniature_in_hand");
+                }
+                if (t == 214 && mc.player != null) {
+                    mc.setScreen(new InventoryScreen(mc.player));
+                }
+                if (t == 222) {
+                    check(CompressedChunkItemRenderer.miniatures > 0,
+                            "Compressed Chunk drawn as a 3D miniature of its blocks (" + CompressedChunkItemRenderer.miniatures + " renders)");
+                    shot(mc, "03b_inventory_miniature");
+                }
+                if (t == 226) {
+                    mc.setScreen(null);
+                    // Frame the hole and the spot just south of it where the chunk will be set back down.
+                    Vec3 mid = Vec3.atCenterOf(target).add(0.0, 0.0, 10.0);
+                    lookAt(mid.add(-40.0, 18.0, -2.0), mid.add(0.0, 5.0, 0.0));
+                }
+                if (t == 234) {
                     server(level -> {
                         ServerPlayer p = player();
+                        p.getInventory().selected = 0;
                         int slot = findChunk(p);
                         if (slot < 0) {
                             check(false, "compressed chunk available to place");
                             return;
                         }
-                        // Set it back down as a floating island hovering above the hole it came from.
-                        BlockPos anchor = target.offset(0, 22, 0);
+                        int px = target.getX();
+                        int pz = target.getZ() + 20;
+                        placeClicked = new BlockPos(px, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, px, pz) - 1, pz);
+                        placeData = ChunkCapture.data(p.getInventory().getItem(slot)).copy();
                         p.getCooldowns().removeCooldown(ModItems.COMPRESSED_CHUNK.get());
-                        boolean ok = CompressedChunkItem.place(level, p, p.getInventory().getItem(slot), anchor);
-                        check(ok && findChunk(p) < 0, "Compressed Chunk pasted back into the world and consumed");
+                        boolean ok = CompressedChunkItem.place(level, p, p.getInventory().getItem(slot), placeClicked);
+                        check(ok && findChunk(p) < 0, "Compressed Chunk thrown down and consumed");
                     });
+                    if (mc.player != null) {
+                        mc.player.getInventory().selected = 0;
+                    }
                 }
-                if (t == 228) {
-                    shot(mc, "04_chunk_unfold");
+                if (t == 242) {
+                    shot(mc, "04_unfold_grow");
                 }
-                if (t == 276) {
+                if (t == 252) {
+                    shot(mc, "04b_unfold_landing");
+                }
+                if (t == 270) {
                     check(ChunkEffects.placements > 0, "placement effect played on the client");
-                    shot(mc, "05_floating_chunk");
+                    server(level -> {
+                        if (placeData == null) {
+                            return;
+                        }
+                        BlockPos min = ChunkCapture.placementMin(placeData, placeClicked);
+                        int lowest = min.getY() + ChunkCapture.bounds(placeData)[1];
+                        check(lowest == placeClicked.getY() + 1, "unfolded structure rests exactly on top of the clicked block");
+                        StructureData data = StructureData.fromTag(placeData);
+                        int matched = 0;
+                        for (int packed : data.blocks) {
+                            if (level.getBlockState(min.offset(StructureData.x(packed), StructureData.y(packed), StructureData.z(packed))).getBlock() == data.state(packed).getBlock()) {
+                                matched++;
+                            }
+                        }
+                        check(matched >= data.blocks.length * 0.95, "structure grew back to full size block for block (" + matched + " / " + data.blocks.length + ")");
+                    });
+                    shot(mc, "05_chunk_on_top");
                 }
                 if (t == 290) {
                     server(level -> {
@@ -487,6 +548,18 @@ public final class ClientSelfTest {
 
     @SubscribeEvent
     public static void onGuiRendered(RenderGuiEvent.Post event) {
+        // With a screen open, wait until the screen itself has been drawn.
+        if (Minecraft.getInstance().screen == null) {
+            grabPendingShots();
+        }
+    }
+
+    @SubscribeEvent
+    public static void onScreenRendered(ScreenEvent.Render.Post event) {
+        grabPendingShots();
+    }
+
+    private static void grabPendingShots() {
         if (!ServerSelfTest.ENABLED || PENDING_SHOTS.isEmpty()) {
             return;
         }
@@ -508,6 +581,10 @@ public final class ClientSelfTest {
             check(model != missing, "item model loaded: " + item);
         }
         check(mc.getBlockRenderer().getBlockModel(ModBlocks.CORE_FRAGMENT.get().defaultBlockState()) != missing, "block model loaded: core_fragment");
+        check(mc.getItemRenderer().getModel(new ItemStack(ModItems.COMPRESSED_CHUNK.get()), null, null, 0).isCustomRenderer(),
+                "Compressed Chunk uses its custom 3D item renderer");
+        check(mc.getModelManager().getModel(CompressedChunkItemRenderer.CAGE) != missing, "model loaded: compressed_chunk_cage");
+        check(mc.getModelManager().getModel(CompressedChunkItemRenderer.EMPTY) != missing, "model loaded: compressed_chunk_empty");
 
         String[] sprites = {"item/pocket_casing", "item/pocket_core_stable", "item/pocket_core_unstable", "item/pocket_core_critical",
                 "item/pocket_ring_stable", "item/pocket_ring_unstable", "item/pocket_ring_critical",

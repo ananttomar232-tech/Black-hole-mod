@@ -129,7 +129,9 @@ def pocket_models():
 
 
 def chunk_model():
-    # A miniature landscape cube (grass top, strata sides) floating in a glowing containment cage.
+    # The Compressed Chunk is drawn by a custom item renderer (CompressedChunkItemRenderer): a live
+    # 3D miniature of the blocks stored in its NBT, inside a glowing containment cage. These models
+    # supply the cage, and the terrain-cube fallback shown for a chunk with nothing inside.
     full = {"uv": [0, 0, 16, 16]}
     terrain = {
         "from": [4.5, 3.5, 4.5], "to": [11.5, 10.5, 11.5], "name": "terrain",
@@ -137,33 +139,48 @@ def chunk_model():
                   "north": dict(full, texture="#side"), "south": dict(full, texture="#side"),
                   "east": dict(full, texture="#side"), "west": dict(full, texture="#side")},
     }
-    elements = [terrain,
-                box([6.3, 10.5, 6.3], [7.3, 12.2, 7.3], "#side", name="tree_trunk"),
-                box([5.5, 12.2, 5.5], [8.1, 13.6, 8.1], "#top", name="tree_canopy"),
-                box([8.6, 10.5, 8.4], [10.6, 11.9, 10.4], "#bottom", name="house"),
-                box([8.4, 11.9, 8.2], [10.8, 12.6, 10.6], "#casing", name="house_roof")]
+    scenery = [terrain,
+               box([6.3, 10.5, 6.3], [7.3, 12.2, 7.3], "#side", name="tree_trunk"),
+               box([5.5, 12.2, 5.5], [8.1, 13.6, 8.1], "#top", name="tree_canopy"),
+               box([8.6, 10.5, 8.4], [10.6, 11.9, 10.4], "#bottom", name="house"),
+               box([8.4, 11.9, 8.2], [10.8, 12.6, 10.6], "#casing", name="house_roof")]
+    cage = []
     lo, hi, t = 2.5, 13.5, 0.7
     ylo, yhi = 1.5, 12.5
     k = 0
     for a in (lo, hi - t):
         for b in (lo, hi - t):
-            elements.append(box([a, ylo, b], [a + t, yhi, b + t], "#frame", glow=True, name=f"cage_post_{k}"))
+            cage.append(box([a, ylo, b], [a + t, yhi, b + t], "#frame", glow=True, name=f"cage_post_{k}"))
             k += 1
     for y in (ylo, yhi - t):
         for b in (lo, hi - t):
-            elements.append(box([lo, y, b], [hi, y + t, b + t], "#frame", glow=True, name=f"cage_bar_x_{k}"))
-            elements.append(box([b, y, lo], [b + t, y + t, hi], "#frame", glow=True, name=f"cage_bar_z_{k}"))
+            cage.append(box([lo, y, b], [hi, y + t, b + t], "#frame", glow=True, name=f"cage_bar_x_{k}"))
+            cage.append(box([b, y, lo], [b + t, y + t, hi], "#frame", glow=True, name=f"cage_bar_z_{k}"))
             k += 1
-    elements.append(box([7.0, 0.5, 7.0], [9.0, 1.5, 9.0], "#core", glow=True, full_uv=True, name="singularity_seed"))
+    cage.append(box([7.0, 0.5, 7.0], [9.0, 1.5, 9.0], "#core", glow=True, full_uv=True, name="singularity_seed"))
+    textures = {"top": ns("item/chunk_top"), "side": ns("item/chunk_side"), "bottom": ns("item/chunk_bottom"),
+                "frame": ns("item/pocket_ring_stable"), "core": ns("item/pocket_core_stable"),
+                "casing": ns("item/pocket_casing"), "particle": ns("item/chunk_side")}
+    chunk_display = display(gui_scale=0.95, ground=0.5, fixed=0.9, tp_s=0.5, tp_t=(0, 3, 1),
+                            fp=(0, -35, 0), fp_s=0.5, fp_t=(1.2, 3.4, 1.0))
     asset("models/item/compressed_chunk.json", {
+        "parent": "builtin/entity",
+        "gui_light": "side",
+        "textures": {"particle": ns("item/chunk_side")},
+        "display": chunk_display,
+    })
+    asset("models/item/compressed_chunk_cage.json", {
         "gui_light": "side",
         "ambientocclusion": False,
-        "textures": {"top": ns("item/chunk_top"), "side": ns("item/chunk_side"), "bottom": ns("item/chunk_bottom"),
-                     "frame": ns("item/pocket_ring_stable"), "core": ns("item/pocket_core_stable"),
-                     "casing": ns("item/pocket_casing"), "particle": ns("item/chunk_side")},
-        "elements": elements,
-        "display": display(gui_scale=0.95, ground=0.5, fixed=0.9, tp_s=0.5, tp_t=(0, 3, 1),
-                           fp=(0, -35, 0), fp_s=0.5, fp_t=(1.2, 3.4, 1.0)),
+        "textures": {k: v for k, v in textures.items() if k in ("frame", "core", "particle")},
+        "elements": cage,
+    })
+    asset("models/item/compressed_chunk_empty.json", {
+        "gui_light": "side",
+        "ambientocclusion": False,
+        "textures": textures,
+        "elements": scenery + cage,
+        "display": chunk_display,
     })
 
 
@@ -290,7 +307,7 @@ def lang():
         "tooltip.livingblackhole.compressed_chunk.empty": "Empty - nothing is folded inside.",
         "tooltip.livingblackhole.compressed_chunk.blocks": "Contains %s blocks:",
         "tooltip.livingblackhole.compressed_chunk.origin": "Taken from %s, %s, %s",
-        "tooltip.livingblackhole.compressed_chunk.usage": "Right-click a surface to unfold it. The block you originally clicked lands on the block you click now.",
+        "tooltip.livingblackhole.compressed_chunk.usage": "Right-click a block to unfold it on top: the structure grows back to full size resting on the block you click.",
         "tooltip.livingblackhole.core_fragment.lore": "A shard of the singularity's own lattice.",
         "tooltip.livingblackhole.core_fragment.usage": "3 Core Fragments + 1 Compressed Chunk = Anti-Gravity Bomb",
 
@@ -302,6 +319,7 @@ def lang():
         "message.livingblackhole.aim_at_block": "Aim at a block - the singularity swallows the 16\u00d716\u00d716 chunk around it.",
         "message.livingblackhole.chunk_consumed": "Swallowed %s blocks - chunk %s / %s",
         "message.livingblackhole.chunk_placed": "Unfolded %s blocks",
+        "message.livingblackhole.chunk_unfolding": "Unfolding %s blocks...",
         "message.livingblackhole.chunk_empty": "This Compressed Chunk is empty.",
         "message.livingblackhole.chunk_blocked": "Nothing could be placed here.",
         "message.livingblackhole.collapse_started": "The Anti-Gravity Bomb reached the event horizon - the singularity is destabilizing!",

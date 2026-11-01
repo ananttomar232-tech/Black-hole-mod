@@ -4,7 +4,9 @@ import com.ananttomar.livingblackhole.LivingBlackHole;
 import com.ananttomar.livingblackhole.client.fx.BlackHoleClientFx;
 import com.ananttomar.livingblackhole.client.render.BeamEffects;
 import com.ananttomar.livingblackhole.client.render.LensingEffect;
+import com.ananttomar.livingblackhole.client.fx.ChunkAnimations;
 import com.ananttomar.livingblackhole.client.fx.GravityPull;
+import com.ananttomar.livingblackhole.client.render.StructureMeshCache;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraftforge.api.distmarker.Dist;
@@ -32,6 +34,7 @@ public final class ClientEvents {
         ClientEffects.tick(mc);
         GravityPull.tick(mc);
         BeamEffects.tick();
+        ChunkAnimations.tick();
         if (ClientEffects.ticks() % 100 == 0) {
             BlackHoleClientFx.cleanup();
         }
@@ -39,7 +42,9 @@ public final class ClientEvents {
 
     @SubscribeEvent
     public static void onRenderStage(RenderLevelStageEvent event) {
-        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
+            ChunkAnimations.render(event.getPoseStack(), event.getCamera(), event.getPartialTick());
+        } else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
             LensingEffect.captureView(event.getPoseStack().last().pose(), event.getProjectionMatrix());
             BeamEffects.render(event.getPoseStack(), event.getCamera(), event.getPartialTick());
         } else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
@@ -92,5 +97,7 @@ public final class ClientEvents {
         ClientEffects.reset();
         BeamEffects.clear();
         BlackHoleClientFx.clear();
+        ChunkAnimations.clear();
+        StructureMeshCache.clear();
     }
 }

@@ -23,6 +23,12 @@ import com.ananttomar.livingblackhole.singularity.SingularityManager;
 import com.ananttomar.livingblackhole.singularity.SingularitySavedData;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.registries.ForgeRegistries;
+import com.ananttomar.livingblackhole.singularity.PendingPlacements;
+import com.ananttomar.livingblackhole.singularity.StructureData;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
@@ -66,6 +72,9 @@ public final class ServerSelfTest {
     private static int maxDebris;
     private static int bombTick = -1;
     private static FakePlayer fake;
+    private static CompoundTag pastedData;
+    private static BlockPos pasteClicked;
+    private static BlockState pasteClickedState;
 
     private ServerSelfTest() {
     }
@@ -97,6 +106,13 @@ public final class ServerSelfTest {
 
     private static void step(ServerLevel level) {
         if (tick == 20) {
+            // ---- Core Fragments never generate with the world: the mod ships no features or biome modifiers.
+            var registries = server.registryAccess();
+            boolean noWorldgen = registries.registryOrThrow(Registries.PLACED_FEATURE).keySet().stream().noneMatch(k -> k.getNamespace().equals(LivingBlackHole.MODID))
+                    && registries.registryOrThrow(Registries.CONFIGURED_FEATURE).keySet().stream().noneMatch(k -> k.getNamespace().equals(LivingBlackHole.MODID))
+                    && registries.registryOrThrow(ForgeRegistries.Keys.BIOME_MODIFIERS).keySet().stream().noneMatch(k -> k.getNamespace().equals(LivingBlackHole.MODID));
+            check(noWorldgen, "no world generation: core fragments only appear when a black hole escapes");
+
             BlockPos spawn = level.getSharedSpawnPos();
             fake = FakePlayerFactory.get(level, new GameProfile(UUID.fromString("8d6f1d4e-55c4-4f6e-9b3a-1f0a5c2e7b11"), "[LBH-SelfTest]"));
             ItemStack pocket = new ItemStack(ModItems.POCKET_BLACK_HOLE.get());
@@ -120,16 +136,18 @@ public final class ServerSelfTest {
             check(level.getBlockState(chestPos).isAir(), "captured blocks removed from the world");
             check(level.getEntitiesOfClass(ItemEntity.class, new AABB(target).inflate(12.0)).isEmpty(), "nothing dropped while capturing (chest contents kept in NBT)");
             check(PocketBlackHoleItem.getConsumed(pocket) == 1, "pocket counts consumed chunks (1)");
+            CompoundTag captured = ChunkCapture.data(chunk);
+            check(captured != null && captured.hasUUID("Id") && captured.getIntArray("Bounds").length == 6 && !captured.getString("Biome").isEmpty(),
+                    "chunk NBT carries the structure id, bounds and biome for its 3D miniature");
 
-            // ---- Paste it 40 blocks away and check the chest and its diamonds came with it.
-            BlockPos anchor = surface(level, spawn.getX() + 64, spawn.getZ() + 48);
+            // ---- Unfold it 40 blocks away, on top of the clicked block. It grows in, so the blocks land later.
+            pasteClicked = surface(level, spawn.getX() + 64, spawn.getZ() + 48);
+            pasteClickedState = level.getBlockState(pasteClicked);
+            pastedData = captured != null ? captured.copy() : new CompoundTag();
             fake.getCooldowns().removeCooldown(ModItems.COMPRESSED_CHUNK.get());
-            boolean placed = CompressedChunkItem.place(level, fake, chunk, anchor);
-            int pasted = solidCount(level, ChunkCapture.regionMin(anchor));
-            check(placed && chunk.isEmpty(), "compressed chunk placed and consumed");
-            check(pasted >= stored, "structure pasted back (" + pasted + " solid blocks in the region)");
-            boolean diamonds = level.getBlockEntity(anchor.above()) instanceof ChestBlockEntity c2 && c2.getItem(0).is(Items.DIAMOND) && c2.getItem(0).getCount() == 7;
-            check(diamonds, "chest and its 7 diamonds restored from NBT");
+            boolean placed = CompressedChunkItem.place(level, fake, chunk, pasteClicked);
+            check(placed && chunk.isEmpty(), "compressed chunk thrown down and consumed");
+            check(PendingPlacements.pending() == 1, "structure is growing back in before it lands");
 
             // ---- Chunks 2..10: the tenth breaks containment.
             for (int i = 1; i < PocketBlackHoleItem.limit(); i++) {
@@ -157,6 +175,8 @@ public final class ServerSelfTest {
                     check(level.getBlockState(f).is(ModBlocks.CORE_FRAGMENT.get()), "core fragment " + i + " placed at " + f.toShortString());
                     check(dist <= 302 && dist >= 40, "core fragment " + i + " within 300 blocks (" + Math.round(dist) + ")");
                 }
+                check(java.util.Arrays.stream(ev.fragments).distinct().count() == SingularityEvent.FRAGMENTS && SingularityEvent.FRAGMENTS == 3,
+                        "exactly 3 distinct core fragments spawned by the escape");
                 check(level.getEntity(blackHoleId) instanceof BlackHoleEntity, "black hole entity exists");
             }
 
@@ -185,6 +205,24 @@ public final class ServerSelfTest {
             grid.setItem(5, ItemStack.EMPTY);
             boolean incomplete = server.getRecipeManager().getRecipeFor(RecipeType.CRAFTING, grid, level).isPresent();
             check(!incomplete, "recipe needs the Compressed Chunk (3 fragments alone craft nothing)");
+            grid.setItem(5, bombChunk.copy());
+            grid.setItem(2, new ItemStack(ModItems.CORE_FRAGMENT.get()));
+            boolean tooMany = server.getRecipeManager().getRecipeFor(RecipeType.CRAFTING, grid, level).isPresent();
+            check(!tooMany, "recipe is exact (4 fragments + chunk craft nothing)");
+            for (int i = 0; i < 9; i++) {
+                grid.setItem(i, ItemStack.EMPTY);
+            }
+            grid.setItem(3, new ItemStack(ModItems.CORE_FRAGMENT.get()));
+            grid.setItem(6, new ItemStack(ModItems.CORE_FRAGMENT.get()));
+            grid.setItem(7, new ItemStack(ModItems.CORE_FRAGMENT.get()));
+            grid.setItem(1, bombChunk.copy());
+            ItemStack anyOrder = server.getRecipeManager().getRecipeFor(RecipeType.CRAFTING, grid, level)
+                    .map(r -> r.assemble(grid, level.registryAccess())).orElse(ItemStack.EMPTY);
+            check(anyOrder.is(ModItems.ANTI_GRAVITY_BOMB.get()) && anyOrder.getCount() == 1, "shapeless: any arrangement yields exactly 1 bomb");
+        }
+
+        if (tick == 20 + PendingPlacements.GROW_TICKS + 6 && pastedData != null) {
+            checkPlacement(level);
         }
 
         if (tick > 20 && tick < 320 && center != null) {
@@ -283,6 +321,38 @@ public final class ServerSelfTest {
             }
         }
         return ItemStack.EMPTY;
+    }
+
+    /** The unfolded structure must rest on top of the clicked block, block for block, chest contents included. */
+    private static void checkPlacement(ServerLevel level) {
+        check(PendingPlacements.pending() == 0, "structure landed after its grow-in animation");
+        BlockPos min = ChunkCapture.placementMin(pastedData, pasteClicked);
+        int[] bounds = ChunkCapture.bounds(pastedData);
+        int lowest = min.getY() + bounds[1];
+        check(lowest == pasteClicked.getY() + 1, "lowest layer sits exactly on top of the clicked block (y " + lowest + " vs clicked " + pasteClicked.getY() + ")");
+        BlockState now = level.getBlockState(pasteClicked);
+        // Covered grass may legitimately decay to dirt on a random tick; anything else means it was overwritten.
+        boolean untouched = now.getBlock() == pasteClickedState.getBlock() || pasteClickedState.is(Blocks.GRASS_BLOCK) && now.is(Blocks.DIRT);
+        check(untouched, "clicked block left in place (" + now.getBlock() + "), structure not buried in the ground");
+
+        StructureData data = StructureData.fromTag(pastedData);
+        int matched = 0;
+        int bottomLayer = 0;
+        for (int packed : data.blocks) {
+            BlockPos pos = min.offset(StructureData.x(packed), StructureData.y(packed), StructureData.z(packed));
+            if (level.getBlockState(pos).getBlock() == data.state(packed).getBlock()) {
+                matched++;
+                if (pos.getY() == pasteClicked.getY() + 1) {
+                    bottomLayer++;
+                }
+            }
+        }
+        check(matched >= data.blocks.length * 0.98, "structure rebuilt block for block (" + matched + " / " + data.blocks.length + ")");
+        check(bottomLayer > 0, "bottom layer present on the clicked block's level (" + bottomLayer + " blocks)");
+        // The chest was captured at local (8, 9, 8): one above the clicked block of a region centred on it.
+        BlockPos chestAt = min.offset(ChunkCapture.ANCHOR, ChunkCapture.ANCHOR + 1, ChunkCapture.ANCHOR);
+        boolean diamonds = level.getBlockEntity(chestAt) instanceof ChestBlockEntity c2 && c2.getItem(0).is(Items.DIAMOND) && c2.getItem(0).getCount() == 7;
+        check(diamonds, "chest and its 7 diamonds restored from NBT");
     }
 
     private static void check(boolean ok, String what) {
