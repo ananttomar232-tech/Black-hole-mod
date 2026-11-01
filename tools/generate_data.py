@@ -161,8 +161,9 @@ def chunk_model():
     textures = {"top": ns("item/chunk_top"), "side": ns("item/chunk_side"), "bottom": ns("item/chunk_bottom"),
                 "frame": ns("item/pocket_ring_stable"), "core": ns("item/pocket_core_stable"),
                 "casing": ns("item/pocket_casing"), "particle": ns("item/chunk_side")}
-    chunk_display = display(gui_scale=0.95, ground=0.5, fixed=0.9, tp_s=0.5, tp_t=(0, 3, 1),
-                            fp=(0, -35, 0), fp_s=0.5, fp_t=(1.2, 3.4, 1.0))
+    # Held like a block: the standard block-item hand transforms keep the miniature on screen.
+    chunk_display = display(gui_scale=0.95, ground=0.5, fixed=0.9, tp=(75, 45, 0), tp_s=0.375, tp_t=(0, 2.5, 0),
+                            fp=(0, 45, 0), fp_s=0.4, fp_t=(0, 0, 0))
     asset("models/item/compressed_chunk.json", {
         "parent": "builtin/entity",
         "gui_light": "side",
