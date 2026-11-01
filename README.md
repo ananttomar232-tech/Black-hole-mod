@@ -13,10 +13,12 @@ Captured automatically by the CI client self-test (software rendering, default s
 
 | | |
 |---|---|
-| ![Chunk vortex](docs/screenshots/00-chunk-vortex.jpg) | ![Chunk hole](docs/screenshots/01-chunk-hole.jpg) |
-| *A 16×16×16 chunk spirals into the Pocket Black Hole* | *The perfect cube it leaves behind* |
-| ![Floating chunk](docs/screenshots/02-floating-chunk.jpg) | ![Living black hole](docs/screenshots/03-living-black-hole.jpg) |
-| *The Compressed Chunk unfolded again as a floating island above its own hole* | *Breach: the living black hole devours the hills, its lensing bending the world behind it* |
+| ![Chunk shrinking into the hand](docs/screenshots/00-chunk-shrink.jpg) | ![Chunk hole](docs/screenshots/01-chunk-hole.jpg) |
+| *The swallowed 16×16×16 chunk, real blocks and all, shrinks and flies into the Pocket Black Hole* | *The perfect cube it leaves behind* |
+| ![Compressed Chunk miniature](docs/screenshots/01b-chunk-miniature.png) | ![Chunk growing back](docs/screenshots/02-chunk-unfold.jpg) |
+| *The Compressed Chunk in the hotbar: a 3D miniature of the exact blocks inside (8× zoom)* | *Unfolding: the structure scales back up to full size as it lands* |
+| ![Chunk resting on top](docs/screenshots/02b-chunk-on-top.jpg) | ![Living black hole](docs/screenshots/03-living-black-hole.jpg) |
+| *Set down resting on top of the clicked block, beside the hole it came from* | *Breach: the living black hole devours the hills, its lensing bending the world behind it* |
 | ![Gravity pull](docs/screenshots/04-gravity-pull.jpg) | ![Core Fragment crash site](docs/screenshots/05-core-fragment.jpg) |
 | *Sprinting away against the pull* | *A Core Fragment crash site with its sky beam* |
 | ![Destabilizing](docs/screenshots/06-destabilizing.jpg) | ![Detonation](docs/screenshots/07-detonation.jpg) |
